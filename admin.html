@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b3d3a">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<script src="assets/theme-toggle.js"></script>
+<script src="assets/idle-logout.js"></script>
+<script src="assets/register-sw.js"></script>
+<title>Ri'aya — Admin</title>
+<script src="assets/vendor/supabase-js.min.js"></script>
+<link rel="stylesheet" href="assets/design-system.css">
+<link rel="stylesheet" href="assets/vendor/tabler-icons/tabler-icons.min.css">
+<style>
+  body {
+    margin: 0; background: var(--paper); color: var(--ink); display: flex; min-height: 100vh;
+  }
+
+  nav {
+    width: 220px; background: var(--teal-950); color: #f2f7f6;
+    display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto; align-self: flex-start;
+  }
+  nav .brand { padding: 0 24px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(242,247,246,0.15); margin-bottom: 16px; }
+  nav .brand img { width: 34px; height: 34px; border-radius: 9px; background: #fff; padding: 3px; object-fit: contain; flex-shrink: 0; }
+  nav .brand .ar { font-size: 17px; font-weight: 700; line-height: 1.2; }
+  nav .brand .en { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75; }
+  .nav-btn { background: transparent; border: none; color: #f2f7f6; text-align: left; padding: 13px 24px; font-size: 14px; cursor: pointer; opacity: 0.75; border-left: 3px solid transparent; transition: opacity 0.15s ease, background 0.15s ease; }
+  .nav-btn:hover { opacity: 1; background: rgba(242,247,246,0.06); }
+  .nav-btn.active { opacity: 1; background: rgba(242,247,246,0.1); border-left-color: var(--teal-300); font-weight: 600; }
+  .nav-spacer { flex: 1; }
+  #logout-btn { margin: 0 24px; color: #f2f7f6; border: 1px solid rgba(242,247,246,0.35); }
+  #logout-btn:hover { background: rgba(242,247,246,0.12) !important; color: #fff !important; }
+  #logout-btn:hover { background: rgba(242,247,246,0.1); }
+
+  main { flex: 1; padding: 40px; max-width: 1100px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadein-up 0.2s ease; }
+  h1.page-title { font-size: 22px; font-weight: 600; color: var(--heading); margin: 0 0 24px; }
+
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: #fff; background: var(--teal-700); flex-shrink: 0; object-fit: cover; }
+
+  .empty-note { color: var(--muted-soft); font-size: 13.5px; padding: 20px 0; }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 20px; }
+  .toolbar input { flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; }
+  .toolbar select { padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; background: var(--surface); }
+
+  /* Doctor rows */
+  .doctor-row { background: var(--surface); border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 16px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(15,32,39,0.06); }
+  .doctor-row .info { flex: 1; min-width: 0; }
+  .doctor-row .info .name { font-size: 14.5px; font-weight: 600; }
+  .doctor-row .info .meta { font-size: 12.5px; color: var(--muted-strong); margin-top: 3px; }
+  .role-pill { font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; background: rgba(31,158,143,0.12); color: var(--heading); }
+  .status-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; }
+  .status-pill.active { background: rgba(47,125,92,0.12); color: var(--green-500); }
+  .status-pill.inactive { background: var(--surface-alt); color: var(--muted); }
+  .row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .row-actions button { font-size: 12px; padding: 7px 13px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+  .row-actions button.danger { border-color: var(--red-500); color: var(--red-500); }
+  .row-actions button:hover { background: var(--surface-hover); }
+  .row-end { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-shrink: 0; }
+
+  /* Department cards */
+  .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .dept-card { background: var(--surface); border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); cursor: pointer; transition: box-shadow 0.15s ease; }
+  .dept-card:hover { box-shadow: 0 4px 12px rgba(15,32,39,0.12); }
+  .dept-card .dept-name { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .dept-card .dept-count { font-size: 12.5px; color: var(--muted-strong); }
+
+  .back-link { font-size: 13px; color: var(--heading); cursor: pointer; margin-bottom: 16px; display: inline-block; font-weight: 600; }
+  .section-label { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted-strong); margin: 24px 0 12px; }
+
+  /* Modal */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,32,39,0.4); align-items: center; justify-content: center; z-index: 100; }
+  .modal-backdrop.show { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; width: 380px; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: modal-pop 0.16s ease; }
+  @keyframes modal-pop { from { opacity: 0; transform: scale(0.97) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal h3 { margin: 0 0 14px; font-size: 16px; }
+  .modal label { display: block; font-size: 12px; color: var(--muted-strong); margin: 12px 0 5px; }
+  .modal input, .modal select { width: 100%; padding: 9px; border-radius: 5px; border: 1px solid var(--line); font-size: 13.5px; }
+  .modal .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal button.primary { flex: 1; background: var(--teal-900); color: #fff; border: none; border-radius: 6px; padding: 10px; cursor: pointer; font-weight: 600; }
+  .modal button.secondary { flex: 1; background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 10px; cursor: pointer; }
+  .photo-preview { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; margin-top: 8px; background: var(--surface-alt); }
+  .access-denied { padding: 80px 20px; text-align: center; color: var(--muted-soft); font-size: 15px; }
+
+  @media (max-width: 800px) {
+    body { flex-direction: column; }
+
+    main { padding: 20px; max-width: 100%; }
+    .toolbar { flex-direction: column; }
+    .doctor-row { flex-wrap: wrap; align-items: flex-start; row-gap: 8px; }
+    .doctor-row .row-end { flex-basis: 100%; justify-content: space-between; margin-left: 0 !important; }
+    .dept-grid, .patient-grid { grid-template-columns: 1fr; }
+    .modal { width: 92vw !important; }
+  }
+
+  /* ── Bottom tab bar (mirrors the Duty Doctor page) ── */
+  @media (max-width: 767px) {
+    .mobile-bottom-nav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+      background: var(--surface); border-top: 0.5px solid var(--line);
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+    .mobile-bottom-nav .mbn-btn {
+      flex: 1; background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      font-size: 9px !important; color: var(--muted-strong, var(--muted-strong));
+      padding: 4px 0 !important; text-align: center;
+    }
+    .mobile-bottom-nav .mbn-btn i { font-size: 19px; }
+    .mobile-bottom-nav .mbn-btn.active { color: var(--teal-800); font-weight: 600; }
+  }
+
+  @media (min-width: 768px) {
+    .mobile-bottom-nav { display: none !important; }
+  }
+</style>
+<link rel="stylesheet" href="assets/mobile-nav.css">
+</head>
+<body class="has-bottom-nav">
+
+<button class="theme-toggle-btn" aria-label="Toggle dark mode"></button>
+
+<div class="mobile-topbar">
+  <div class="mt-brand"><img src="assets/logo.png" alt="Ri'aya logo"><span>رعاية Admin</span></div>
+  <div class="mt-actions">
+    <button class="theme-toggle-btn theme-toggle-btn-mobile" aria-label="Toggle dark mode"></button>
+    <button class="hamburger-btn" id="mobile-logout-btn" aria-label="Sign out"><i class="ti ti-logout"></i></button>
+  </div>
+</div>
+<div class="nav-overlay" id="nav-overlay"></div>
+<script>initThemeToggle();</script>
+
+<div class="mobile-bottom-nav">
+  <button class="mbn-btn nav-btn active" data-tab="doctors"><i class="ti ti-stethoscope"></i>Doctors</button>
+  <button class="mbn-btn nav-btn" data-tab="departments"><i class="ti ti-building-hospital"></i>Departments</button>
+</div>
+
+<nav>
+  <div class="brand"><img src="assets/logo.png" alt="Ri'aya logo"><div><span class="ar">رعاية</span><br><span class="en">Admin</span></div></div>
+  <button class="nav-btn active" data-tab="doctors">Doctors</button>
+  <button class="nav-btn" data-tab="departments">Departments</button>
+  <div class="nav-spacer"></div>
+  <button id="logout-btn" class="btn btn-ghost">Sign out</button>
+</nav>
+
+<main id="main-content">
+
+  <!-- ══════════════ DOCTOR MANAGEMENT ══════════════ -->
+  <div class="tab-panel active" id="tab-doctors">
+    <h1 class="page-title">Doctor Management</h1>
+    <div class="toolbar">
+      <input type="text" id="doctor-search" placeholder="Search by name...">
+      <select id="doctor-filter-dept"><option value="">All departments</option></select>
+      <select id="doctor-filter-role">
+        <option value="">All roles</option>
+        <option value="head_doctor">Head Doctor</option>
+        <option value="duty_doctor">Duty Doctor</option>
+      </select>
+    </div>
+    <div id="doctors-list"><div class="empty-note">Loading…</div></div>
+  </div>
+
+  <!-- ══════════════ DEPARTMENTS ══════════════ -->
+  <div class="tab-panel" id="tab-departments">
+    <h1 class="page-title">Departments</h1>
+    <div id="dept-overview">
+      <div class="dept-grid" id="dept-grid"><div class="empty-note">Loading…</div></div>
+    </div>
+    <div id="dept-detail" style="display:none;"></div>
+  </div>
+
+</main>
+
+<!-- Edit doctor modal -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <h3>Edit doctor</h3>
+    <label>Full name</label>
+    <input type="text" id="ed-name">
+    <label>Doctor ID</label>
+    <input type="text" id="ed-doctor-code" placeholder="e.g. DOC-0142">
+    <label>Doctor type</label>
+    <select id="ed-title">
+      <option value="Resident">Resident</option>
+      <option value="Registrar">Registrar</option>
+      <option value="Fellow">Fellow</option>
+      <option value="Specialist">Specialist</option>
+      <option value="Consultant">Consultant</option>
+      <option value="Intern">Intern</option>
+    </select>
+    <label>Department</label>
+    <select id="ed-department"></select>
+    <label>Specialty</label>
+    <select id="ed-specialty"></select>
+    <label>Status</label>
+    <select id="ed-status">
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <label>Profile picture</label>
+    <input type="file" id="ed-photo" accept="image/*">
+    <img class="photo-preview" id="ed-photo-preview" style="display:none;">
+    <div class="modal-actions">
+      <button class="secondary" id="edit-cancel">Cancel</button>
+      <button class="primary" id="edit-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ══════════════════════════════════════════════════════════════
+  // CONNECTION SETUP
+  // ══════════════════════════════════════════════════════════════
+  const SUPABASE_URL = "https://etvrquzjlgzmysbxlrev.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dnJxdXpqbGd6bXlzYnhscmV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2ODEyOTgsImV4cCI6MjA5OTI1NzI5OH0.zIgWMsOzp-agiVOe-cnOx4qgA-FUsU-fGbgVCvW_Yjg";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  IdleLogout.init(supabaseClient); // auto sign-out after inactivity — see assets/idle-logout.js
+
+  let me = null;
+  let allDoctors = []; // every profile with role head_doctor or duty_doctor
+  let departments = []; // [{ id, name, has_specialties }]
+  let specialtiesByDept = {}; // { department_id: [{ id, name }] }
+
+  function initials(name) {
+    if (!name) return "?";
+    const parts = name.replace(/^Dr\.?\s*/i, "").trim().split(/\s+/);
+    return (parts[0]?.[0] || "").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+  }
+
+  function avatarImgError(imgEl) {
+    const div = document.createElement("div");
+    div.className = imgEl.dataset.fallbackClass || imgEl.className;
+    div.textContent = imgEl.dataset.fallbackText || "";
+    imgEl.replaceWith(div);
+  }
+
+  function avatarHtml(person) {
+    if (person.photo_url) return `<img class="avatar" src="${person.photo_url}" alt="${person.full_name}" onerror="avatarImgError(this)" data-fallback-class="avatar" data-fallback-text="${initials(person.full_name)}">`;
+    return `<div class="avatar">${initials(person.full_name)}</div>`;
+  }
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  // ── Mobile topbar sign-out ──
+  // (Doctors/Departments are already reachable via the bottom tab bar on
+  // mobile, so the mobile topbar just needs a quick way to sign out.)
+  document.getElementById("mobile-logout-btn")?.addEventListener("click", () => {
+    document.getElementById("logout-btn").click();
+  });
+
+  // ── Tab switching ──
+  document.querySelectorAll(".nav-btn[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn[data-tab]").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // Loads departments + specialties fresh from the database — nothing
+  // hardcoded, so adding/removing departments later needs zero code changes.
+  async function loadDepartmentsAndSpecialties() {
+    const { data: deptData } = await supabaseClient.from("departments").select("id, name, has_specialties").order("name");
+    departments = deptData || [];
+
+    const { data: specData } = await supabaseClient.from("specialties").select("id, department_id, name").order("name");
+    specialtiesByDept = {};
+    (specData || []).forEach((s) => {
+      specialtiesByDept[s.department_id] = specialtiesByDept[s.department_id] || [];
+      specialtiesByDept[s.department_id].push(s);
+    });
+  }
+
+  // Populate the department filter + edit dropdowns from the DB-loaded list
+  function populateDeptSelects() {
+    const filterSel = document.getElementById("doctor-filter-dept");
+    const editSel = document.getElementById("ed-department");
+    departments.forEach((d) => {
+      filterSel.innerHTML += `<option value="${d.name}">${d.name}</option>`;
+      editSel.innerHTML += `<option value="${d.name}" data-dept-id="${d.id}">${d.name}</option>`;
+    });
+  }
+
+  // Rebuilds the Specialty dropdown to match whichever Department is selected.
+  // If that department has no specialties of its own, the specialty is
+  // automatically the department name (single, pre-selected option).
+  function refreshSpecialtyOptions(selectedSpecialtyName) {
+    const deptSel = document.getElementById("ed-department");
+    const specSel = document.getElementById("ed-specialty");
+    const selectedOption = deptSel.selectedOptions[0];
+    const deptId = selectedOption ? Number(selectedOption.dataset.deptId) : null;
+    const dept = departments.find((d) => d.id === deptId);
+
+    const options = (specialtiesByDept[deptId] || []);
+    specSel.innerHTML = options.map((s) =>
+      `<option value="${s.name}" ${s.name === selectedSpecialtyName ? "selected" : ""}>${s.name}</option>`
+    ).join("");
+
+    // Departments with no specialties of their own still get exactly one
+    // option: the department name itself, auto-selected.
+    if (dept && !dept.has_specialties && options.length === 0) {
+      specSel.innerHTML = `<option value="${dept.name}" selected>${dept.name}</option>`;
+    }
+  }
+
+  document.getElementById("ed-department").addEventListener("change", () => refreshSpecialtyOptions());
+
+  // ══════════════════════════════════════════════════════════════
+  // DOCTOR MANAGEMENT
+  // ══════════════════════════════════════════════════════════════
+  async function loadAllDoctors() {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, title, department, specialty, doctor_code, role, status, photo_url")
+      .in("role", ["head_doctor", "duty_doctor"])
+      .order("full_name");
+
+    if (error) {
+      document.getElementById("doctors-list").innerHTML = `<div class="empty-note">Couldn't load doctors: ${error.message}</div>`;
+      return;
+    }
+    allDoctors = data || [];
+    renderDoctorsList();
+  }
+
+  function roleLabel(role) {
+    return role === "head_doctor" ? "Head Doctor" : "Duty Doctor";
+  }
+
+  function renderDoctorsList() {
+    const listEl = document.getElementById("doctors-list");
+    const query = document.getElementById("doctor-search").value.trim().toLowerCase();
+    const deptFilter = document.getElementById("doctor-filter-dept").value;
+    const roleFilter = document.getElementById("doctor-filter-role").value;
+
+    const filtered = allDoctors.filter((d) =>
+      (!query || d.full_name.toLowerCase().includes(query)) &&
+      (!deptFilter || d.department === deptFilter) &&
+      (!roleFilter || d.role === roleFilter)
+    );
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div class="empty-note">No doctors match.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map((d) => `
+      <div class="doctor-row">
+        ${avatarHtml(d)}
+        <div class="info">
+          <div class="name">${d.full_name}</div>
+          <div class="meta">${roleLabel(d.role)}</div>
+          <div class="meta">${d.title || "—"}</div>
+          <div class="meta">${d.department || "—"}${d.specialty ? " · " + d.specialty : ""}</div>
+          ${d.doctor_code ? `<div class="meta">${d.doctor_code}</div>` : ""}
+        </div>
+        <div class="row-end">
+          <span class="status-pill ${d.status === "inactive" ? "inactive" : "active"}">${d.status === "inactive" ? "Inactive" : "Active"}</span>
+          <div class="row-actions">
+            <button data-edit="${d.user_id}">Edit</button>
+            <button class="danger" data-delete="${d.user_id}">Remove</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    listEl.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => openEditModal(btn.dataset.edit));
+    });
+    listEl.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => deleteDoctor(btn.dataset.delete));
+    });
+  }
+
+  document.getElementById("doctor-search").addEventListener("input", renderDoctorsList);
+  document.getElementById("doctor-filter-dept").addEventListener("change", renderDoctorsList);
+  document.getElementById("doctor-filter-role").addEventListener("change", renderDoctorsList);
+
+  // ── Edit modal ──
+  let editingDoctorId = null;
+  let pendingPhotoFile = null;
+
+  function openEditModal(doctorId) {
+    const doc = allDoctors.find((d) => d.user_id === doctorId);
+    if (!doc) return;
+
+    editingDoctorId = doctorId;
+    pendingPhotoFile = null;
+
+    document.getElementById("ed-name").value = doc.full_name || "";
+    document.getElementById("ed-doctor-code").value = doc.doctor_code || "";
+    document.getElementById("ed-title").value = doc.title || "Resident";
+    document.getElementById("ed-department").value = doc.department || (departments[0]?.name || "");
+    refreshSpecialtyOptions(doc.specialty);
+    document.getElementById("ed-status").value = doc.status === "inactive" ? "inactive" : "active";
+
+    const preview = document.getElementById("ed-photo-preview");
+    if (doc.photo_url) {
+      preview.src = doc.photo_url;
+      preview.style.display = "block";
+    } else {
+      preview.style.display = "none";
+    }
+    document.getElementById("ed-photo").value = "";
+
+    document.getElementById("edit-modal").classList.add("show");
+  }
+
+  document.getElementById("ed-photo").addEventListener("change", (e) => {
+    pendingPhotoFile = e.target.files[0] || null;
+    if (pendingPhotoFile) {
+      const preview = document.getElementById("ed-photo-preview");
+      preview.src = URL.createObjectURL(pendingPhotoFile);
+      preview.style.display = "block";
+    }
+  });
+
+  document.getElementById("edit-cancel").addEventListener("click", () => {
+    document.getElementById("edit-modal").classList.remove("show");
+  });
+
+  document.getElementById("edit-save").addEventListener("click", async () => {
+    const saveBtn = document.getElementById("edit-save");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+
+    const updates = {
+      full_name: document.getElementById("ed-name").value.trim(),
+      doctor_code: document.getElementById("ed-doctor-code").value.trim(),
+      title: document.getElementById("ed-title").value,
+      department: document.getElementById("ed-department").value,
+      specialty: document.getElementById("ed-specialty").value,
+      status: document.getElementById("ed-status").value,
+    };
+
+    // If a new photo was chosen, upload it to Supabase Storage first,
+    // then save the resulting public URL onto the profile.
+    if (pendingPhotoFile) {
+      const filePath = `${editingDoctorId}-${Date.now()}.${pendingPhotoFile.name.split(".").pop()}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from("doctor-photos")
+        .upload(filePath, pendingPhotoFile, { upsert: true });
+
+      if (uploadError) {
+        alert("Couldn't upload photo: " + uploadError.message);
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save changes";
+        return;
+      }
+
+      const { data: publicUrlData } = supabaseClient.storage.from("doctor-photos").getPublicUrl(filePath);
+      updates.photo_url = publicUrlData.publicUrl;
+    }
+
+    const { error } = await supabaseClient.from("profiles").update(updates).eq("user_id", editingDoctorId);
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save changes";
+
+    if (error) {
+      alert("Couldn't save changes: " + error.message);
+      return;
+    }
+
+    document.getElementById("edit-modal").classList.remove("show");
+    await loadAllDoctors();
+    if (currentDeptView) renderDeptDetail(currentDeptView); // keep department view in sync if open
+  });
+
+  async function deleteDoctor(doctorId) {
+    const doc = allDoctors.find((d) => d.user_id === doctorId);
+    const confirmed = confirm(
+      `Remove ${doc ? doc.full_name : "this doctor"} from the roster?\n\n` +
+      `Note: this removes their profile record only. Their login account is not deleted — ` +
+      `for full account removal, use Supabase Authentication directly.`
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabaseClient.from("profiles").delete().eq("user_id", doctorId);
+    if (error) {
+      alert("Couldn't remove doctor: " + error.message);
+      return;
+    }
+
+    allDoctors = allDoctors.filter((d) => d.user_id !== doctorId);
+    renderDoctorsList();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // DEPARTMENTS
+  // ══════════════════════════════════════════════════════════════
+  let currentDeptView = null;
+
+  function renderDeptGrid() {
+    const gridEl = document.getElementById("dept-grid");
+    gridEl.innerHTML = departments.map((dept) => {
+      const count = allDoctors.filter((d) => d.department === dept.name).length;
+      return `
+        <div class="dept-card" data-dept="${dept.name}">
+          <div class="dept-name">${dept.name}</div>
+          <div class="dept-count">${count} doctor${count === 1 ? "" : "s"} ${dept.has_specialties ? `· ${(specialtiesByDept[dept.id] || []).length} specialties` : "· no sub-specialties"}</div>
+        </div>
+      `;
+    }).join("");
+
+    gridEl.querySelectorAll("[data-dept]").forEach((card) => {
+      card.addEventListener("click", () => openDeptDetail(card.dataset.dept));
+    });
+  }
+
+  function openDeptDetail(dept) {
+    currentDeptView = dept;
+    document.getElementById("dept-overview").style.display = "none";
+    document.getElementById("dept-detail").style.display = "block";
+    renderDeptDetail(dept);
+  }
+
+  function closeDeptDetail() {
+    currentDeptView = null;
+    document.getElementById("dept-overview").style.display = "block";
+    document.getElementById("dept-detail").style.display = "none";
+  }
+
+  function renderDeptDetail(dept) {
+    const detailEl = document.getElementById("dept-detail");
+    const deptDoctors = allDoctors.filter((d) => d.department === dept);
+    const head = deptDoctors.find((d) => d.role === "head_doctor");
+    const dutyDocs = deptDoctors.filter((d) => d.role === "duty_doctor");
+
+    // Anyone currently a head doctor elsewhere, or any duty doctor, is a
+    // candidate to become this department's head doctor.
+    const headCandidates = allDoctors.filter((d) => d.user_id !== head?.user_id);
+
+    detailEl.innerHTML = `
+      <span class="back-link" id="dept-back">← All departments</span>
+      <h1 class="page-title">${dept}</h1>
+
+      <p class="section-label">Head doctor</p>
+      ${head ? `
+        <div class="doctor-row">
+          ${avatarHtml(head)}
+          <div class="info">
+            <div class="name">${head.full_name}</div>
+            <div class="meta">${head.title || "Head Doctor"}${head.specialty ? " · " + head.specialty : ""}</div>
+          </div>
+          <div class="row-actions"><button data-edit="${head.user_id}">Edit</button></div>
+        </div>
+      ` : `<div class="empty-note">No head doctor assigned.</div>`}
+
+      <label style="display:block; font-size:12px; color: var(--muted-strong); margin:14px 0 6px;">Reassign head doctor</label>
+      <select id="reassign-head" style="width:100%; max-width:320px; padding:9px; border-radius:6px; border:1px solid var(--line);">
+        <option value="">— Select a doctor —</option>
+        ${headCandidates.map((d) => `<option value="${d.user_id}">${d.full_name} (currently ${roleLabel(d.role)}, ${d.department})</option>`).join("")}
+      </select>
+      <button id="reassign-head-btn" style="margin-left:8px; padding:9px 16px; border-radius:6px; border:none; background:var(--teal-900); color:#fff; cursor:pointer;">Set as head</button>
+
+      <p class="section-label">Duty doctors</p>
+      ${dutyDocs.length === 0 ? `<div class="empty-note">No duty doctors in this department.</div>` : dutyDocs.map((d) => `
+        <div class="doctor-row">
+          ${avatarHtml(d)}
+          <div class="info">
+            <div class="name">${d.full_name}</div>
+            <div class="meta">${d.title || "Duty Doctor"}${d.specialty ? " · " + d.specialty : ""}</div>
+          </div>
+          <div class="row-end">
+            <span class="status-pill ${d.status === "inactive" ? "inactive" : "active"}">${d.status === "inactive" ? "Inactive" : "Active"}</span>
+            <div class="row-actions"><button data-edit="${d.user_id}">Edit</button></div>
+          </div>
+        </div>
+      `).join("")}
+    `;
+
+    document.getElementById("dept-back").addEventListener("click", closeDeptDetail);
+    detailEl.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => openEditModal(btn.dataset.edit));
+    });
+
+    document.getElementById("reassign-head-btn").addEventListener("click", async () => {
+      const newHeadId = document.getElementById("reassign-head").value;
+      if (!newHeadId) { alert("Pick a doctor first."); return; }
+
+      const newHead = allDoctors.find((d) => d.user_id === newHeadId);
+      const confirmed = confirm(`Make ${newHead.full_name} the head doctor of ${dept}?`);
+      if (!confirmed) return;
+
+      // Demote the current head (if any) to duty_doctor, keep them in the department
+      if (head) {
+        await supabaseClient.from("profiles").update({ role: "duty_doctor" }).eq("user_id", head.user_id);
+      }
+
+      // Promote the selected doctor: move them into this department as head_doctor
+      await supabaseClient.from("profiles").update({
+        role: "head_doctor",
+        department: dept,
+        head_doctor_id: null,
+      }).eq("user_id", newHeadId);
+
+      // Every duty doctor in this department now reports to the new head
+      await supabaseClient.from("profiles")
+        .update({ head_doctor_id: newHeadId })
+        .eq("department", dept)
+        .eq("role", "duty_doctor");
+
+      await loadAllDoctors();
+      renderDeptGrid();
+      renderDeptDetail(dept);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ENTRY POINT
+  // ══════════════════════════════════════════════════════════════
+  // ── Real-time: any change to any doctor's profile (whether made by
+  // this admin session, another admin tab, or a head doctor toggling a
+  // status) refreshes Doctor Management and the open Department view
+  // instantly. ──
+  function setupRealtimeDoctors() {
+    supabaseClient
+      .channel("admin-doctors-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, async () => {
+        await loadAllDoctors();
+        renderDeptGrid();
+        if (currentDeptView) renderDeptDetail(currentDeptView);
+      })
+      .subscribe();
+  }
+
+  // Retries a network call a few times with increasing delay before giving
+  // up — a single dropped request on bad wifi/4G shouldn't be enough to
+  // break the whole page load.
+  async function withRetry(fn, { retries = 3, baseDelayMs = 800 } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try { return await fn(); }
+      catch (err) {
+        lastErr = err;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
+      }
+    }
+    throw lastErr;
+  }
+
+  function showConnectionTroubleScreen(retryFn) {
+    const host = document.querySelector("main") || document.body;
+    host.innerHTML = `
+      <div class="empty-note" style="max-width:420px; margin:60px auto; text-align:center;">
+        <div style="font-size:28px; margin-bottom:10px;">📶</div>
+        <div style="font-weight:700; margin-bottom:6px;">Having trouble connecting</div>
+        <p style="margin:0 0 16px;">This can happen on weak wifi or cellular data. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" id="connection-retry-btn">Retry</button>
+      </div>
+    `;
+    document.getElementById("connection-retry-btn").addEventListener("click", retryFn);
+  }
+
+  async function init() {
+    const { data: { session } } = await withRetry(() => supabaseClient.auth.getSession());
+    if (!session) { window.location.href = "index.html"; return; }
+
+    const { data: profile } = await withRetry(() => supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, role")
+      .eq("user_id", session.user.id)
+      .single());
+
+    if (!profile || profile.role !== "admin") {
+      document.getElementById("main-content").innerHTML = `<div class="access-denied">You don't have access to this page.</div>`;
+      document.querySelector("nav").style.display = "none";
+      document.querySelector(".mobile-topbar").style.display = "none";
+      document.querySelector(".mobile-bottom-nav").style.display = "none";
+      return;
+    }
+
+    me = profile;
+    await loadDepartmentsAndSpecialties();
+    populateDeptSelects();
+    await loadAllDoctors();
+    renderDeptGrid();
+    setupRealtimeDoctors();
+  }
+
+  init().catch((err) => {
+    console.error("init() failed after retries:", err);
+    showConnectionTroubleScreen(() => window.location.reload());
+  });
+</script>
+
+</body>
+</html>

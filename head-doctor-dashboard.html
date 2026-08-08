@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b3d3a">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<script src="assets/theme-toggle.js"></script>
+<script src="assets/idle-logout.js"></script>
+<script src="assets/register-sw.js"></script>
+<title>Ri'aya — Head Doctor</title>
+<script src="assets/vendor/supabase-js.min.js"></script>
+<link rel="stylesheet" href="assets/design-system.css">
+<link rel="stylesheet" href="assets/vendor/tabler-icons/tabler-icons.min.css">
+<style>
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Left sidebar: tab navigation ── */
+  nav {
+    width: 220px;
+    background: var(--teal-950);
+    color: #f2f7f6;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto; align-self: flex-start;
+  }
+  nav .brand { padding: 0 24px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(242,247,246,0.15); margin-bottom: 16px; }
+  nav .brand img { width: 34px; height: 34px; border-radius: 9px; background: #fff; padding: 3px; object-fit: contain; flex-shrink: 0; }
+  nav .brand .ar { font-size: 18px; font-weight: 600; }
+  nav .brand .en { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75; }
+
+  .sidebar-profile {
+    display: flex; align-items: center; gap: 10px; padding: 0 24px 20px;
+    margin-bottom: 8px; border-bottom: 1px solid rgba(242,247,246,0.12);
+  }
+  .sidebar-profile #sidebar-profile-photo .avatar { width: 34px; height: 34px; font-size: 12px; }
+  .sidebar-profile #sidebar-profile-name { font-size: 12.5px; font-weight: 600; color: #f2f7f6; opacity: 0.92; line-height: 1.3; }
+
+  .nav-btn {
+    background: transparent;
+    border: none;
+    color: #f2f7f6;
+    text-align: left;
+    padding: 13px 24px;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.75;
+    border-left: 3px solid transparent;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+  .nav-btn:hover { opacity: 1; background: rgba(242,247,246,0.06); }
+  .nav-btn.active { opacity: 1; background: rgba(242,247,246,0.1); border-left-color: var(--teal-300); font-weight: 600; }
+
+  .nav-spacer { flex: 1; }
+  #logout-btn {
+    margin: 0 24px;
+    background: transparent;
+    border: 1px solid rgba(242,247,246,0.35);
+    color: #f2f7f6;
+    padding: 9px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #logout-btn:hover { background: rgba(242,247,246,0.1); }
+
+  /* ── Main content area ── */
+  main { flex: 1; padding: 40px; max-width: 1000px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  h1.page-title { font-size: 22px; font-weight: 600; color: var(--heading); margin: 0 0 24px; }
+
+  /* Avatar: colored circle with initials, used everywhere instead of real photos */
+  .avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 16px; color: #fff;
+    background: var(--teal-700); flex-shrink: 0; object-fit: cover;
+  }
+  .avatar.lg { width: 72px; height: 72px; font-size: 22px; }
+
+  /* ── Avatar color variety (assigned deterministically by avatarColorClass()) ── */
+  .avatar.c-pink, .mini-avatar.c-pink   { background: #f4c0d1; color: #4b1528; }
+  .avatar.c-purple, .mini-avatar.c-purple { background: #cecbf6; color: #26215c; }
+  .avatar.c-teal, .mini-avatar.c-teal   { background: var(--teal-700); color: #fff; }
+  .avatar.c-amber, .mini-avatar.c-amber { background: #f6dcb8; color: #6b4413; }
+
+  /* Home tab: "me" card */
+  .me-card {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 1px 3px rgba(15,32,39,0.08);
+    margin-bottom: 32px;
+  }
+  .me-card .details h2 { margin: 0 0 4px; font-size: 19px; }
+  .me-card .details .dept { font-size: 13px; color: var(--teal-700); font-weight: 600; margin-bottom: 4px; }
+  .me-card .details .id { font-size: 12px; color: var(--muted-soft); }
+
+  .section-label { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted-strong); margin: 0 0 14px; }
+
+  .doctor-row {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(15,32,39,0.06);
+  }
+  .doctor-row .info { flex: 1; }
+  .doctor-row .info .name { font-size: 14.5px; font-weight: 600; }
+  .doctor-row .info .meta { font-size: 12.5px; color: var(--muted-strong); margin-top: 2px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.active { background: var(--green-500); }
+  .dot.inactive { background: var(--muted); }
+
+  .empty-note { color: var(--muted-soft); font-size: 13.5px; padding: 20px 0; }
+
+  /* Chat: contact list + conversation window */
+  .chat-layout { display: flex; gap: 20px; height: 65vh; }
+  .chat-list { width: 250px; background: var(--surface); border-radius: 8px; overflow-y: auto; box-shadow: 0 1px 2px rgba(15,32,39,0.06); flex-shrink: 0; }
+  .chat-list-group-label { padding: 12px 16px 6px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted-soft); }
+  .chat-list-item {
+    padding: 12px 16px; font-size: 13.5px; cursor: pointer; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .chat-list-item:hover { background: var(--surface-hover); }
+  .chat-list-item.selected { background: rgba(31,158,143,0.1); font-weight: 600; }
+  .chat-list-item .mini-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--teal-700); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; object-fit: cover; }
+  .chat-list-item .mini-avatar.head { background: var(--teal-900); }
+  .chat-list-item .item-sub { font-size: 11px; color: var(--muted-soft); }
+  .chat-unread-badge {
+    margin-left: auto; background: var(--teal-500); color: #fff; font-size: 11px; font-weight: 700;
+    min-width: 19px; height: 19px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    padding: 0 5px; flex-shrink: 0;
+  }
+
+  .chat-window { flex: 1; background: var(--surface); border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(15,32,39,0.06); }
+  .chat-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--heading); }
+  .chat-header .mini-avatar {
+    width: 34px; height: 34px; border-radius: 50%; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--teal-700); color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .chat-header .mini-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .chat-back-btn {
+    display: none; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(242,247,246,0.14); border: none; color: #f2f7f6;
+    font-size: 17px; cursor: pointer; transition: background 0.15s ease;
+  }
+  .chat-back-btn:hover { background: rgba(242,247,246,0.24); }
+  .chat-back-btn:active { transform: scale(0.94); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .bubble { max-width: 70%; padding: 9px 13px; border-radius: 10px; font-size: 13.5px; line-height: 1.4; }
+  .bubble.me { align-self: flex-end; background: var(--teal-900); color: #f2f7f6; }
+  .bubble.them { align-self: flex-start; background: var(--surface-alt); color: var(--ink); }
+  .bubble.pending { opacity: 0.65; }
+  .bubble.failed { background: rgba(181,68,46,0.85); }
+  .bubble-text { white-space: pre-wrap; word-break: break-word; }
+  .bubble-footer { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 3px; }
+  .bubble-status { font-size: 10px; opacity: 0.75; font-style: italic; }
+  .bubble-status.failed-text { font-style: normal; font-weight: 600; }
+  .bubble-tick { font-size: 14px; opacity: 0.75; }
+  .bubble-tick.seen { color: var(--teal-300); opacity: 1; }
+
+  .bubble.has-attachment { padding: 6px; }
+  .bubble-attachment-img { display: block; max-width: 220px; max-height: 220px; border-radius: 8px; object-fit: cover; }
+  .bubble-attachment-file {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+    background: rgba(255,255,255,0.12); color: inherit; text-decoration: none; font-size: 12.5px;
+  }
+  .bubble.them .bubble-attachment-file { background: rgba(11,61,58,0.08); }
+  .bubble-attachment-file span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .chat-input-row { display: flex; gap: 8px; padding: 14px; border-top: 1px solid var(--line); align-items: center; }
+  .chat-input-row input {
+    flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px;
+  }
+  .chat-input-row button {
+    padding: 10px 18px; background: var(--teal-900); color: #fff; border: none; border-radius: 6px;
+    font-size: 13.5px; cursor: pointer;
+  }
+  .chat-input-row button:hover { background: var(--teal-700); }
+  .chat-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #chat-attach-btn { padding: 10px 12px; background: transparent; color: var(--heading); border: 1px solid var(--line); font-size: 15px; }
+  #chat-attach-btn:hover:not(:disabled) { background: var(--surface-hover); }
+  .chat-upload-status { padding: 0 14px 10px; font-size: 11.5px; color: var(--muted, var(--muted)); font-style: italic; }
+
+  /* Schedule tab */
+  .legend { font-size: 12.5px; color: var(--muted-strong); margin-bottom: 16px; }
+  .legend b { color: var(--ink); }
+
+  /* Typewriter caret shown on the schedule heading while it's "typing" */
+  .typing-caret::after {
+    content: "|"; display: inline-block; margin-left: 2px; color: var(--teal-500);
+    animation: caret-blink 0.8s step-end infinite;
+  }
+  @keyframes caret-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .schedule-intro { margin: 0 0 22px; }
+  .schedule-intro-title { font-size: 16px; font-weight: 700; color: var(--heading); margin: 0 0 10px; min-height: 22px; }
+  .schedule-shift-lines { display: flex; flex-direction: column; gap: 3px; }
+  .schedule-shift-line { font-size: 13px; color: var(--teal-700); line-height: 1.6; }
+  .schedule-shift-line b { color: var(--teal-700); }
+  table.schedule { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,32,39,0.08); }
+  table.schedule th, table.schedule td { padding: 12px 10px; text-align: center; border-top: 1px solid var(--line); font-size: 13px; }
+  table.schedule thead th { background: var(--surface-alt); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted-strong); }
+  table.schedule td.name-col, table.schedule th.name-col { text-align: left; padding-left: 16px; }
+  table.schedule select { padding: 5px; border-radius: 5px; border: 1px solid var(--line); font-size: 12.5px; }
+
+  @media (max-width: 767px) {
+    body { flex-direction: column; }
+
+    main { padding: 20px; max-width: 100%; }
+    .me-card { flex-direction: column; align-items: flex-start; gap: 14px; }
+    table.schedule { display: block; overflow-x: auto; white-space: nowrap; }
+    .doctor-row { flex-wrap: wrap; }
+
+    /* ── Chat: full-screen list, then full-screen conversation ── */
+    .chat-layout { flex-direction: column; height: calc(100vh - 150px); gap: 0; }
+    .chat-list {
+      width: 100%; max-height: none; flex: 1; display: block;
+      border-radius: 14px;
+    }
+    .chat-window {
+      position: fixed; inset: 0; z-index: 45; border-radius: 0;
+      transform: translateX(100%); transition: transform 0.22s ease;
+    }
+    .chat-window.mobile-open { transform: translateX(0); }
+    .chat-back-btn {
+      display: inline-flex !important;
+      width: 38px; height: 38px; font-size: 19px;
+      background: rgba(242,247,246,0.16); border: 1px solid rgba(242,247,246,0.3);
+    }
+    .chat-header {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--teal-950); color: #f2f7f6; border-bottom: none;
+      padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top));
+    }
+    .chat-header-name { color: #f2f7f6; font-weight: 500; font-size: 13px; }
+    .chat-header .mini-avatar { width: 30px; height: 30px; font-size: 11px; }
+    .chat-messages { background: var(--paper); padding: 14px; }
+    .bubble.me { border-radius: 12px 12px 3px 12px; }
+    .bubble.them { border-radius: 12px 12px 12px 3px; background: var(--surface); }
+    .chat-input-row { background: var(--surface); padding: 10px 12px; }
+    .chat-input-row input { border-radius: 10px; font-size: 16px; } /* 16px stops iOS zoom */
+    .chat-input-row button { border-radius: 10px; }
+
+    /* ── Bottom tab bar ── */
+    .mobile-bottom-nav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+      background: var(--surface); border-top: 0.5px solid var(--line);
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+    .mobile-bottom-nav .mbn-btn {
+      flex: 1; background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      font-size: 9px !important; color: var(--muted-strong, var(--muted-strong));
+      padding: 4px 0 !important; text-align: center;
+    }
+    .mobile-bottom-nav .mbn-btn i { font-size: 19px; }
+    .mobile-bottom-nav .mbn-btn.active { color: var(--teal-800); font-weight: 600; }
+  }
+
+  @media (min-width: 768px) {
+    .chat-back-btn, .mobile-bottom-nav { display: none !important; }
+  }
+</style>
+<link rel="stylesheet" href="assets/mobile-nav.css">
+</head>
+<body class="has-bottom-nav">
+
+<button class="theme-toggle-btn" aria-label="Toggle dark mode"></button>
+
+<div class="mobile-topbar">
+  <div class="mt-brand"><img src="assets/logo.png" alt="Ri'aya logo"><span>رعاية Head Doctor</span></div>
+  <div class="mt-actions">
+    <button class="theme-toggle-btn theme-toggle-btn-mobile" aria-label="Toggle dark mode"></button>
+    <button class="hamburger-btn" id="mobile-logout-btn" aria-label="Sign out"><i class="ti ti-logout"></i></button>
+  </div>
+</div>
+<div class="nav-overlay" id="nav-overlay"></div>
+<script>initThemeToggle();</script>
+
+<div class="mobile-bottom-nav">
+  <button class="mbn-btn nav-btn active" data-tab="home"><i class="ti ti-home"></i>Home</button>
+  <button class="mbn-btn nav-btn" data-tab="chat"><i class="ti ti-message-circle"></i>Chat</button>
+  <button class="mbn-btn nav-btn" data-tab="schedule"><i class="ti ti-calendar"></i>Schedule</button>
+</div>
+
+<nav>
+  <div class="brand">
+    <img src="assets/logo.png" alt="Ri'aya logo">
+    <div><span class="ar">رعاية</span><br><span class="en">Head Doctor</span></div>
+  </div>
+  <div class="sidebar-profile">
+    <span id="sidebar-profile-photo"></span>
+    <span id="sidebar-profile-name">—</span>
+  </div>
+  <button class="nav-btn active" data-tab="home">Home</button>
+  <button class="nav-btn" data-tab="chat">Chat</button>
+  <button class="nav-btn" data-tab="schedule">Schedule</button>
+  <div class="nav-spacer"></div>
+  <button id="logout-btn">Sign out</button>
+</nav>
+
+<main>
+
+  <!-- ══════════════ HOME TAB ══════════════ -->
+  <div class="tab-panel active" id="tab-home">
+    <h1 class="page-title">Home</h1>
+    <div class="me-card" id="me-card">
+      <div id="me-avatar-wrap"></div>
+      <div class="details">
+        <h2 id="me-name">Loading…</h2>
+        <div class="dept" id="me-dept"></div>
+        <div class="dept" id="me-specialty" style="opacity:0.8; font-size:12px;"></div>
+        <div class="id" id="me-id"></div>
+      </div>
+    </div>
+
+    <p class="section-label">Active duty doctors</p>
+    <div id="home-doctor-list"><div class="empty-note">Loading…</div></div>
+  </div>
+
+  <!-- ══════════════ CHAT TAB ══════════════ -->
+  <div class="tab-panel" id="tab-chat">
+    <h1 class="page-title" style="margin-bottom:24px;">Chat</h1>
+    <div class="chat-layout">
+      <div class="chat-list" id="chat-list"><div class="empty-note" style="padding:16px;">Loading…</div></div>
+      <div class="chat-window" id="chat-window">
+        <div class="chat-header">
+          <button class="chat-back-btn" id="chat-back-btn" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+          <span class="mini-avatar" id="chat-header-avatar" style="display:none;"></span>
+          <span class="chat-header-name" id="chat-header-name">Select someone to chat with</span>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="empty-note">Choose a duty doctor on the left to start chatting.</div>
+        </div>
+        <div class="chat-input-row">
+          <button id="chat-attach-btn" type="button" disabled title="Attach a file"><i class="ti ti-paperclip"></i></button>
+          <input type="file" id="chat-file-input" style="display:none;">
+          <input type="text" id="chat-input" placeholder="Type a message…" disabled>
+          <button id="chat-send-btn" disabled>Send</button>
+        </div>
+        <div class="chat-upload-status" id="chat-upload-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SCHEDULE TAB ══════════════ -->
+  <div class="tab-panel" id="tab-schedule">
+    <h1 class="page-title">Schedule</h1>
+    <div class="schedule-intro">
+      <h2 class="schedule-intro-title" id="schedule-intro-title"></h2>
+      <div class="schedule-shift-lines">
+        <div class="schedule-shift-line"><b>Shift A</b> — 8:00 AM to 4:00 PM</div>
+        <div class="schedule-shift-line"><b>Shift B</b> — 4:00 PM to 12:00 AM</div>
+        <div class="schedule-shift-line"><b>Shift C</b> — 12:00 AM to 8:00 AM</div>
+      </div>
+    </div>
+    <div id="schedule-wrap"><div class="empty-note">Loading…</div></div>
+  </div>
+
+</main>
+
+<script>
+  // ── Connection setup (same project as every other page) ──
+  const SUPABASE_URL = "https://etvrquzjlgzmysbxlrev.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dnJxdXpqbGd6bXlzYnhscmV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2ODEyOTgsImV4cCI6MjA5OTI1NzI5OH0.zIgWMsOzp-agiVOe-cnOx4qgA-FUsU-fGbgVCvW_Yjg";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  IdleLogout.init(supabaseClient); // auto sign-out after inactivity — see assets/idle-logout.js
+
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const SHIFT_LABELS = { A: "8am–4pm", B: "4pm–12am", C: "12am–8am" };
+
+  let me = null;           // { user_id, full_name, department, role }
+  let dutyDoctors = [];    // list of profiles where head_doctor_id = me
+
+  // Turns a name into initials for the avatar circle, e.g. "Dr. Ahmad Hassan" -> "AH"
+  function initials(name) {
+    if (!name) return "?";
+    const parts = name.replace(/^Dr\.?\s*/i, "").trim().split(/\s+/);
+    return (parts[0]?.[0] || "").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+  }
+
+  // Types text into an element one character at a time, with a blinking
+  // caret while it goes — used for the "Apply shifts…" schedule heading.
+  function typeWriter(el, text, speed = 45) {
+    if (!el) return;
+    if (el._typeWriterTimer) clearInterval(el._typeWriterTimer);
+    el.textContent = "";
+    el.classList.add("typing-caret");
+    let i = 0;
+    el._typeWriterTimer = setInterval(() => {
+      i++;
+      el.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        clearInterval(el._typeWriterTimer);
+        el._typeWriterTimer = null;
+        el.classList.remove("typing-caret");
+      }
+    }, speed);
+  }
+
+  function avatarHtml(person, sizeClass) {
+    const cls = sizeClass ? `avatar ${sizeClass}` : "avatar";
+    if (person.photo_url) {
+      return `<img class="${cls}" src="${person.photo_url}" alt="${person.full_name}">`;
+    }
+    return `<div class="${cls}">${initials(person.full_name)}</div>`;
+  }
+
+  // ── Tab switching ──
+  document.querySelectorAll(".nav-btn[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn[data-tab]").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      // Both the sidebar nav and the mobile bottom nav share data-tab values,
+      // so keep whichever ones match the clicked tab highlighted together.
+      document.querySelectorAll(`.nav-btn[data-tab="${btn.dataset.tab}"]`).forEach((b) => b.classList.add("active"));
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      // Leaving the chat tab (or switching to it fresh) should show the
+      // contact list first on mobile, not a stale open conversation.
+      if (btn.dataset.tab !== "chat") closeMobileChat();
+    });
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  // ── Mobile topbar sign-out ──
+  // (Home/Chat/Doctors/Schedule are already reachable via the bottom tab
+  // bar on mobile, so the mobile topbar just needs a quick way to sign out.)
+  document.getElementById("mobile-logout-btn")?.addEventListener("click", () => {
+    document.getElementById("logout-btn").click();
+  });
+
+  // ── Get today's shift letter for a given doctor from the loaded shift map ──
+  function todaysShiftText(shiftMap, doctorId) {
+    const todayName = DAYS[new Date().getDay()];
+    const letter = shiftMap[doctorId]?.[todayName];
+    if (!letter) return "Off today";
+    return `${letter} shift (${SHIFT_LABELS[letter]})`;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HOME TAB
+  // ══════════════════════════════════════════════════════════════
+  async function renderHome(shiftMap) {
+    document.getElementById("me-avatar-wrap").innerHTML = avatarHtml(me, "lg");
+    document.getElementById("me-name").textContent = me.full_name;
+    document.getElementById("me-dept").textContent = me.department || "—";
+    document.getElementById("me-specialty").textContent = me.specialty || "";
+    document.getElementById("me-id").textContent = "ID: " + (me.doctor_code || me.user_id.slice(0, 8));
+
+    // Persistent sidebar profile — visible under the logo no matter which tab is open
+    document.getElementById("sidebar-profile-photo").innerHTML = avatarHtml(me);
+    document.getElementById("sidebar-profile-name").textContent = me.full_name;
+
+    const listEl = document.getElementById("home-doctor-list");
+    const active = dutyDoctors.filter((d) => d.status !== "inactive");
+
+    if (active.length === 0) {
+      listEl.innerHTML = `<div class="empty-note">No active duty doctors yet.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = active.map((d) => `
+      <div class="doctor-row">
+        ${avatarHtml(d)}
+        <div class="info">
+          <div class="name">${d.full_name}</div>
+          <div class="meta">${d.department || "—"} · ${todaysShiftText(shiftMap, d.user_id)}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // CHAT TAB — chat 1-to-1 with any duty doctor assigned to you
+  // ══════════════════════════════════════════════════════════════
+  let selectedContact = null;       // { id, name }
+  let renderedMessages = [];        // messages currently shown for the open conversation
+  let pendingClientIds = new Set(); // client_ids we've sent but the server echo hasn't confirmed yet
+  let unreadCounts = {};            // { contactUserId: number of unread messages from them }
+
+  async function loadUnreadCounts() {
+    const { data } = await supabaseClient
+      .from("messages")
+      .select("sender_id")
+      .eq("receiver_id", me.user_id)
+      .is("read_at", null);
+
+    unreadCounts = {};
+    (data || []).forEach((m) => {
+      unreadCounts[m.sender_id] = (unreadCounts[m.sender_id] || 0) + 1;
+    });
+  }
+
+  function avatarColorClass(id) {
+    const colors = ["c-pink", "c-purple", "c-teal", "c-amber"];
+    const str = String(id || "");
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    return colors[hash % colors.length];
+  }
+
+  function renderChatList() {
+    const listEl = document.getElementById("chat-list");
+
+    if (dutyDoctors.length === 0) {
+      listEl.innerHTML = `<div class="empty-note" style="padding:16px;">No duty doctors to chat with yet.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = dutyDoctors.map((d) => `
+      <div class="chat-list-item" data-id="${d.user_id}" data-name="${d.full_name}" data-photo="${d.photo_url || ""}">
+        ${d.photo_url ? `<img class="mini-avatar" src="${d.photo_url}" alt="${d.full_name}">` : `<div class="mini-avatar ${avatarColorClass(d.user_id)}">${initials(d.full_name)}</div>`}
+        <div>${d.full_name}<div class="item-sub">${d.department || "Duty Doctor"}</div></div>
+        ${unreadCounts[d.user_id] > 0 ? `<span class="chat-unread-badge">${unreadCounts[d.user_id] > 9 ? "9+" : unreadCounts[d.user_id]}</span>` : ""}
+      </div>
+    `).join("");
+
+    listEl.querySelectorAll(".chat-list-item").forEach((item) => {
+      item.addEventListener("click", () => selectContact(item.dataset.id, item.dataset.name, item.dataset.photo));
+    });
+  }
+
+  async function selectContact(id, name, photoUrl) {
+    selectedContact = { id, name };
+    pendingClientIds.clear();
+    document.querySelectorAll(".chat-list-item").forEach((el) => el.classList.remove("selected"));
+    document.querySelector(`.chat-list-item[data-id="${id}"]`)?.classList.add("selected");
+
+    document.getElementById("chat-header-name").textContent = name;
+    const headerAvatar = document.getElementById("chat-header-avatar");
+    headerAvatar.className = `mini-avatar ${avatarColorClass(id)}`;
+    if (photoUrl) {
+      headerAvatar.innerHTML = `<img src="${photoUrl}" alt="${name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    } else {
+      headerAvatar.innerHTML = "";
+      headerAvatar.textContent = initials(name);
+    }
+    headerAvatar.style.display = "flex";
+    document.getElementById("chat-back-btn").style.display = "inline-flex";
+
+    document.getElementById("chat-input").disabled = false;
+    document.getElementById("chat-send-btn").disabled = false;
+    document.getElementById("chat-attach-btn").disabled = false;
+    document.getElementById("chat-window").classList.add("mobile-open"); // slides in on mobile
+    await loadMessages();
+
+    if (unreadCounts[id]) {
+      delete unreadCounts[id];
+      renderChatList();
+      document.querySelector(`.chat-list-item[data-id="${id}"]`)?.classList.add("selected");
+    }
+    await supabaseClient
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("sender_id", id)
+      .eq("receiver_id", me.user_id)
+      .is("read_at", null);
+  }
+
+  function closeMobileChat() {
+    document.getElementById("chat-window")?.classList.remove("mobile-open");
+  }
+  document.getElementById("chat-back-btn").addEventListener("click", closeMobileChat);
+
+  function scrollChatToBottom() {
+    const msgEl = document.getElementById("chat-messages");
+    msgEl.scrollTop = msgEl.scrollHeight;
+  }
+
+  function isImageAttachment(type) {
+    return type && type.startsWith("image/");
+  }
+
+  function receiptTicksHtml(m) {
+    if (m.sender_id !== me.user_id) return "";
+    if (m.read_at) return `<i class="ti ti-checks bubble-tick seen"></i>`;
+    if (m.delivered_at) return `<i class="ti ti-checks bubble-tick"></i>`;
+    return `<i class="ti ti-check bubble-tick"></i>`;
+  }
+
+  function attachmentHtml(m) {
+    if (!m.attachment_url) return "";
+    if (isImageAttachment(m.attachment_type)) {
+      return `<a href="${m.attachment_url}" target="_blank"><img class="bubble-attachment-img" src="${m.attachment_url}" alt="${m.attachment_name || "attachment"}"></a>`;
+    }
+    return `
+      <a class="bubble-attachment-file" href="${m.attachment_url}" target="_blank" download="${m.attachment_name || ""}">
+        <i class="ti ti-file"></i>
+        <span>${m.attachment_name || "File"}</span>
+        <i class="ti ti-download"></i>
+      </a>
+    `;
+  }
+
+  function renderMessageList() {
+    const msgEl = document.getElementById("chat-messages");
+
+    if (renderedMessages.length === 0) {
+      msgEl.innerHTML = `<div class="empty-note">No messages yet — say hello.</div>`;
+      return;
+    }
+
+    msgEl.innerHTML = renderedMessages.map((m) => `
+      <div class="bubble ${m.sender_id === me.user_id ? "me" : "them"} ${m.pending ? "pending" : ""} ${m.failed ? "failed" : ""} ${m.attachment_url ? "has-attachment" : ""}">
+        ${attachmentHtml(m)}
+        ${m.content ? `<div class="bubble-text">${m.content}</div>` : ""}
+        <div class="bubble-footer">
+          ${m.pending ? '<span class="bubble-status">sending…</span>' : ""}
+          ${m.failed ? '<span class="bubble-status failed-text">failed to send</span>' : ""}
+          ${!m.pending && !m.failed ? receiptTicksHtml(m) : ""}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // Initial load: fetch full history for the selected conversation once.
+  // After this, new messages arrive via the realtime subscription below —
+  // no polling, so replies show up instantly instead of on a delay.
+  async function loadMessages() {
+    if (!selectedContact) return;
+    const msgEl = document.getElementById("chat-messages");
+    msgEl.innerHTML = `<div class="empty-note">Loading conversation…</div>`;
+
+    const { data: messages, error } = await supabaseClient
+      .from("messages")
+      .select("id, client_id, sender_id, content, created_at, delivered_at, read_at, attachment_url, attachment_name, attachment_type")
+      .or(`and(sender_id.eq.${me.user_id},receiver_id.eq.${selectedContact.id}),and(sender_id.eq.${selectedContact.id},receiver_id.eq.${me.user_id})`)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      msgEl.innerHTML = `<div class="empty-note">Couldn't load messages: ${error.message}</div>`;
+      return;
+    }
+
+    renderedMessages = messages || [];
+    renderMessageList();
+    scrollChatToBottom();
+
+    const undelivered = renderedMessages.filter((m) => m.sender_id === selectedContact.id && !m.delivered_at);
+    if (undelivered.length > 0) {
+      await supabaseClient
+        .from("messages")
+        .update({ delivered_at: new Date().toISOString() })
+        .in("id", undelivered.map((m) => m.id));
+    }
+  }
+
+  document.getElementById("chat-send-btn").addEventListener("click", sendChatMessage);
+  document.getElementById("chat-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendChatMessage();
+  });
+
+  document.getElementById("chat-attach-btn").addEventListener("click", () => {
+    document.getElementById("chat-file-input").click();
+  });
+
+  document.getElementById("chat-file-input").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file) await sendChatAttachment(file);
+  });
+
+  async function sendChatAttachment(file) {
+    if (!selectedContact) return;
+    const statusEl = document.getElementById("chat-upload-status");
+    const attachBtn = document.getElementById("chat-attach-btn");
+
+    statusEl.textContent = `Uploading ${file.name}…`;
+    attachBtn.disabled = true;
+
+    const filePath = `${me.user_id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabaseClient.storage.from("chat-attachments").upload(filePath, file);
+
+    if (uploadError) {
+      statusEl.textContent = "";
+      attachBtn.disabled = false;
+      alert("Couldn't upload file: " + uploadError.message);
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage.from("chat-attachments").getPublicUrl(filePath);
+
+    const { error: insertError } = await supabaseClient.from("messages").insert({
+      sender_id: me.user_id,
+      receiver_id: selectedContact.id,
+      content: "",
+      attachment_url: publicUrlData.publicUrl,
+      attachment_name: file.name,
+      attachment_type: file.type,
+      client_id: crypto.randomUUID(),
+    });
+
+    statusEl.textContent = "";
+    attachBtn.disabled = false;
+
+    if (insertError) {
+      alert("Couldn't send attachment: " + insertError.message);
+    }
+  }
+
+  async function sendChatMessage() {
+    const input = document.getElementById("chat-input");
+    const content = input.value.trim();
+    if (!content || !selectedContact) return;
+
+    input.value = "";
+
+    // client_id lets us recognize our own message when it echoes back
+    // through the realtime subscription, so we don't render it twice.
+    const clientId = crypto.randomUUID();
+    pendingClientIds.add(clientId);
+
+    // Optimistic UI: show the message immediately, marked as "sending…",
+    // instead of waiting for the network round-trip.
+    const optimisticMessage = {
+      id: "pending-" + clientId,
+      client_id: clientId,
+      sender_id: me.user_id,
+      content,
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
+    renderedMessages.push(optimisticMessage);
+    renderMessageList();
+    scrollChatToBottom();
+
+    const { error } = await supabaseClient.from("messages").insert({
+      sender_id: me.user_id,
+      receiver_id: selectedContact.id,
+      content,
+      client_id: clientId,
+    });
+
+    if (error) {
+      // Network hiccup or write failure — mark this specific bubble as failed
+      // rather than silently losing the message or blocking the whole chat.
+      pendingClientIds.delete(clientId);
+      const target = renderedMessages.find((m) => m.client_id === clientId);
+      if (target) { target.pending = false; target.failed = true; }
+      renderMessageList();
+    }
+    // On success we don't manually append anything further — the realtime
+    // subscription below will deliver the confirmed row and reconcile it.
+  }
+
+  // One realtime subscription for the whole page, set up once. It listens to
+  // every new message and, in the handler, checks whether it belongs to the
+  // conversation currently open before doing anything with it.
+  function setupRealtimeChat() {
+    supabaseClient
+      .channel("head-messages-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        const m = payload.new;
+
+        if (m.receiver_id === me.user_id) {
+          supabaseClient.from("messages").update({ delivered_at: new Date().toISOString() }).eq("id", m.id).then(() => {});
+
+          const isOpenConversation = selectedContact && m.sender_id === selectedContact.id;
+          if (isOpenConversation) {
+            supabaseClient.from("messages").update({ read_at: new Date().toISOString() }).eq("id", m.id).then(() => {});
+          } else {
+            unreadCounts[m.sender_id] = (unreadCounts[m.sender_id] || 0) + 1;
+            renderChatList();
+          }
+        }
+
+        const belongsToOpenConversation =
+          selectedContact &&
+          ((m.sender_id === me.user_id && m.receiver_id === selectedContact.id) ||
+            (m.sender_id === selectedContact.id && m.receiver_id === me.user_id));
+
+        if (!belongsToOpenConversation) return;
+
+        if (m.client_id && pendingClientIds.has(m.client_id)) {
+          // This is the server-confirmed version of a message we already
+          // rendered optimistically — replace the pending bubble, don't duplicate it.
+          pendingClientIds.delete(m.client_id);
+          const idx = renderedMessages.findIndex((existing) => existing.client_id === m.client_id);
+          if (idx !== -1) renderedMessages[idx] = m;
+          else renderedMessages.push(m);
+        } else {
+          // A genuinely new incoming message from the other person
+          renderedMessages.push(m);
+        }
+
+        renderMessageList();
+        scrollChatToBottom();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
+        const m = payload.new;
+        const idx = renderedMessages.findIndex((existing) => existing.id === m.id);
+        if (idx !== -1) {
+          renderedMessages[idx] = { ...renderedMessages[idx], ...m };
+          renderMessageList();
+        }
+      })
+      .subscribe();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SCHEDULE TAB
+  // ══════════════════════════════════════════════════════════════
+  async function renderSchedule(shiftMap) {
+    typeWriter(document.getElementById("schedule-intro-title"), "Apply shifts for the duty doctors: 📅");
+
+    const wrap = document.getElementById("schedule-wrap");
+
+    if (dutyDoctors.length === 0) {
+      wrap.innerHTML = `<div class="empty-note">No duty doctors to schedule yet.</div>`;
+      return;
+    }
+
+    const headerCells = DAYS.map((d) => `<th>${d}</th>`).join("");
+
+    const rows = dutyDoctors.map((d) => {
+      const cells = DAYS.map((day) => {
+        const current = shiftMap[d.user_id]?.[day] || "";
+        const options = ["", "A", "B", "C"].map(
+          (opt) => `<option value="${opt}" ${opt === current ? "selected" : ""}>${opt || "—"}</option>`
+        ).join("");
+        return `<td><select data-doctor="${d.user_id}" data-day="${day}">${options}</select></td>`;
+      }).join("");
+      return `<tr><td class="name-col">${d.full_name}</td>${cells}</tr>`;
+    }).join("");
+
+    wrap.innerHTML = `
+      <table class="schedule">
+        <thead><tr><th class="name-col">Doctor</th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+
+    // Save a shift the moment a dropdown changes — upsert so it works whether
+    // this doctor/day combination already has a row or not.
+    wrap.querySelectorAll("select").forEach((sel) => {
+      sel.addEventListener("change", async () => {
+        const doctorId = sel.dataset.doctor;
+        const day = sel.dataset.day;
+        const letter = sel.value || null;
+
+        await supabaseClient
+          .from("shifts")
+          .upsert(
+            { doctor_id: doctorId, day_of_week: day, shift_letter: letter },
+            { onConflict: "doctor_id,day_of_week" }
+          );
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // DATA LOADING
+  // ══════════════════════════════════════════════════════════════
+  async function loadDutyDoctors() {
+    const { data } = await supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, department, status, photo_url")
+      .eq("head_doctor_id", me.user_id);
+    dutyDoctors = data || [];
+  }
+
+  async function loadShiftMap() {
+    if (dutyDoctors.length === 0) return {};
+    const ids = dutyDoctors.map((d) => d.user_id);
+    const { data } = await supabaseClient
+      .from("shifts")
+      .select("doctor_id, day_of_week, shift_letter")
+      .in("doctor_id", ids);
+
+    // Build { doctorId: { Mon: 'A', Tue: 'B', ... } } for quick lookups
+    const map = {};
+    (data || []).forEach((row) => {
+      map[row.doctor_id] = map[row.doctor_id] || {};
+      map[row.doctor_id][row.day_of_week] = row.shift_letter;
+    });
+    return map;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ENTRY POINT
+  // ══════════════════════════════════════════════════════════════
+  // ── Real-time: own profile — admin renaming/editing this head doctor
+  // reflects instantly, no reload needed. ──
+  function setupRealtimeOwnProfile() {
+    supabaseClient
+      .channel("head-own-profile-realtime")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${me.user_id}` }, async (payload) => {
+        me = { ...me, ...payload.new };
+        const shiftMap = await loadShiftMap();
+        renderHome(shiftMap);
+      })
+      .subscribe();
+  }
+
+  // ── Real-time: duty doctors under this head — any admin edit (name,
+  // photo, Doctor ID, status) shows up immediately across Home and Chat,
+  // without a refresh. ──
+  function setupRealtimeDutyDoctors() {
+    supabaseClient
+      .channel("head-duty-doctors-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, async (payload) => {
+        const changedId = payload.new?.user_id || payload.old?.user_id;
+        if (changedId === me.user_id) return; // own row handled separately
+        await loadDutyDoctors();
+        const shiftMap = await loadShiftMap();
+        renderHome(shiftMap);
+        renderChatList();
+        renderSchedule(shiftMap);
+      })
+      .subscribe();
+  }
+
+  // ── Real-time: shifts — schedule and today's-shift text stay correct
+  // the instant anything changes. ──
+  function setupRealtimeShifts() {
+    supabaseClient
+      .channel("head-shifts-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, async () => {
+        const shiftMap = await loadShiftMap();
+        renderHome(shiftMap);
+        renderSchedule(shiftMap);
+      })
+      .subscribe();
+  }
+
+  // Retries a network call a few times with increasing delay before giving
+  // up — a single dropped request on bad wifi/4G shouldn't be enough to
+  // break the whole page load.
+  async function withRetry(fn, { retries = 3, baseDelayMs = 800 } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try { return await fn(); }
+      catch (err) {
+        lastErr = err;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
+      }
+    }
+    throw lastErr;
+  }
+
+  function showConnectionTroubleScreen(retryFn) {
+    const host = document.querySelector("main") || document.body;
+    host.innerHTML = `
+      <div class="empty-note" style="max-width:420px; margin:60px auto; text-align:center;">
+        <div style="font-size:28px; margin-bottom:10px;">📶</div>
+        <div style="font-weight:700; margin-bottom:6px;">Having trouble connecting</div>
+        <p style="margin:0 0 16px;">This can happen on weak wifi or cellular data. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" id="connection-retry-btn">Retry</button>
+      </div>
+    `;
+    document.getElementById("connection-retry-btn").addEventListener("click", retryFn);
+  }
+
+  async function init() {
+    const { data: { session } } = await withRetry(() => supabaseClient.auth.getSession());
+    if (!session) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    const { data: profile } = await withRetry(() => supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, department, role, photo_url, doctor_code, specialty")
+      .eq("user_id", session.user.id)
+      .single());
+
+    if (!profile || profile.role !== "head_doctor") {
+      document.querySelector("main").innerHTML = `<div class="empty-note">You don't have access to this page.</div>`;
+      return;
+    }
+
+    me = profile;
+
+    await loadDutyDoctors();
+    const shiftMap = await loadShiftMap();
+
+    renderHome(shiftMap);
+    await loadUnreadCounts();
+    renderChatList();
+    renderSchedule(shiftMap);
+
+    setupRealtimeOwnProfile();
+    setupRealtimeDutyDoctors();
+    setupRealtimeShifts();
+    setupRealtimeChat();
+  }
+
+  init().catch((err) => {
+    console.error("init() failed after retries:", err);
+    showConnectionTroubleScreen(() => window.location.reload());
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,98 @@
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE NAVIGATION & TOUCH OPTIMIZATION
+   Shared across every dashboard. Loaded after each page's own
+   <style> block, so its rules win the cascade at equal specificity
+   — this is what lets it override each page's desktop nav layout
+   at narrow widths without touching that page's own CSS.
+   ═══════════════════════════════════════════════════════════════ */
+
+.mobile-topbar { display: none; }
+.nav-overlay { display: none; }
+
+@media (max-width: 767px) {
+  body { flex-direction: column; }
+
+  /* Fixed top bar: logo + hamburger button, always visible while scrolling */
+  .mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 40;
+    background: var(--teal-950, #06211f); color: #f2f7f6;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(15,32,39,0.15);
+  }
+  .mobile-topbar .mt-brand { display: flex; align-items: center; gap: 10px; }
+  .mobile-topbar .mt-brand img { width: 30px; height: 30px; border-radius: 8px; background: #fff; padding: 2px; object-fit: contain; }
+  .mobile-topbar .mt-brand span { font-size: 15px; font-weight: 700; }
+  .mobile-topbar .mt-actions { display: flex; align-items: center; gap: 8px; }
+  .hamburger-btn {
+    width: 44px; height: 44px; border-radius: 10px; border: none;
+    background: rgba(242,247,246,0.12); color: #f2f7f6; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .hamburger-btn:active { background: rgba(242,247,246,0.22); }
+
+  /* The fixed desktop toggle would sit on top of this bar, so it's
+     replaced by .theme-toggle-btn-mobile living inside .mt-actions. */
+  .theme-toggle-btn:not(.theme-toggle-btn-mobile) { display: none; }
+  .theme-toggle-btn-mobile {
+    position: static; width: 40px; height: 40px;
+    background: rgba(242,247,246,0.12); border: none; color: #f2f7f6;
+    box-shadow: none;
+  }
+  .theme-toggle-btn-mobile:hover { background: rgba(242,247,246,0.22); box-shadow: none; }
+
+  /* Sidebar becomes an off-canvas drawer that slides in from the left */
+  nav {
+    position: fixed !important;
+    top: 0 !important; left: -280px !important;
+    height: 100vh !important; width: 260px !important;
+    flex-direction: column !important;
+    padding: 20px 0 !important;
+    overflow-x: hidden !important; overflow-y: auto !important;
+    z-index: 60;
+    transition: left 0.25s ease;
+    box-shadow: 4px 0 24px rgba(15,32,39,0.25);
+  }
+  nav.open { left: 0 !important; }
+
+  nav .brand, .sidebar-profile { padding-left: 20px !important; padding-right: 20px !important; }
+
+  /* Dark overlay behind the open drawer — tap it to close */
+  .nav-overlay {
+    position: fixed; inset: 0; background: rgba(15,32,39,0.5); z-index: 50;
+  }
+  .nav-overlay.show { display: block; }
+
+  main { width: 100%; padding: 16px !important; max-width: 100% !important; }
+  body.has-bottom-nav main { padding-bottom: 84px !important; }
+
+  /* Comfortable touch targets — 44px is the standard minimum tap size */
+  .nav-btn { min-height: 50px; font-size: 15px !important; display: flex; align-items: center; padding-left: 22px !important; }
+  .btn, button, #logout-btn, .swap-btn, #add-patient-btn, .discharge-btn, .chat-with-btn { min-height: 44px; }
+  input, select, textarea { min-height: 46px; font-size: 16px !important; } /* 16px stops iOS auto-zoom-on-focus */
+  .field-input, .field-select { min-height: 46px; }
+
+  /* Tables: smooth momentum scroll with a sticky first column so labels
+     stay visible while scrolling horizontally through the days */
+  table { -webkit-overflow-scrolling: touch; }
+  .schedule-table-el, table.schedule {
+    display: block; overflow-x: auto; white-space: nowrap; border-radius: 10px;
+  }
+  .schedule-table-el .shift-label-col, table.schedule .name-col {
+    position: sticky; left: 0; background: var(--surface, #fff); z-index: 1;
+  }
+
+  /* Cards and rows: let content wrap onto multiple lines instead of
+     squeezing or overflowing off-screen */
+  .doctor-row, .patient-card, .dept-card, .request-card, .patient-summary,
+  .request-summary, .info-card, .me-card, .patient-header-card {
+    flex-wrap: wrap;
+  }
+
+  .modal { width: 92vw !important; max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal-backdrop { z-index: 100 !important; }
+
+  /* Slightly larger base text for comfortable phone reading */
+  body { font-size: 15px; }
+  .page-title { font-size: 20px !important; }
+}

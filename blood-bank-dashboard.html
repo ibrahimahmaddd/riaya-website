@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b3d3a">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<script src="assets/theme-toggle.js"></script>
+<script src="assets/idle-logout.js"></script>
+<script src="assets/register-sw.js"></script>
+<title>Ri'aya — Blood Bank</title>
+<script src="assets/vendor/supabase-js.min.js"></script>
+<link rel="stylesheet" href="assets/design-system.css">
+<link rel="stylesheet" href="assets/vendor/tabler-icons/tabler-icons.min.css">
+<style>
+  body {
+    margin: 0; background: var(--paper); color: var(--ink); display: flex; min-height: 100vh;
+  }
+
+  nav {
+    width: 220px; background: var(--teal-950); color: #f2f7f6;
+    display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto; align-self: flex-start;
+  }
+  nav .brand { padding: 0 24px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(242,247,246,0.15); margin-bottom: 16px; }
+  nav .brand img { width: 34px; height: 34px; border-radius: 9px; background: #fff; padding: 3px; object-fit: contain; flex-shrink: 0; }
+  nav .brand .ar { font-size: 18px; font-weight: 600; }
+  nav .brand .en { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75; }
+
+  .sidebar-profile {
+    display: flex; align-items: center; gap: 10px; padding: 0 24px 20px;
+    margin-bottom: 8px; border-bottom: 1px solid rgba(242,247,246,0.12);
+  }
+  .sidebar-profile #sidebar-profile-photo .avatar { width: 34px; height: 34px; font-size: 12px; }
+  .sidebar-profile #sidebar-profile-name { font-size: 12.5px; font-weight: 600; color: #f2f7f6; opacity: 0.92; line-height: 1.3; }
+
+  .nav-btn { background: transparent; border: none; color: #f2f7f6; text-align: left; padding: 13px 24px; font-size: 14px; cursor: pointer; opacity: 0.75; border-left: 3px solid transparent; transition: opacity 0.15s ease, background 0.15s ease; }
+  .nav-btn:hover { opacity: 1; background: rgba(242,247,246,0.06); }
+  .nav-btn.active { opacity: 1; background: rgba(242,247,246,0.1); border-left-color: var(--teal-300); font-weight: 600; }
+  .nav-spacer { flex: 1; }
+  #logout-btn { margin: 0 24px; background: transparent; border: 1px solid rgba(242,247,246,0.35); color: #f2f7f6; padding: 9px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.15s ease; }
+  #logout-btn:hover { background: rgba(242,247,246,0.12); }
+
+  main { flex: 1; padding: 40px; max-width: 1100px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadein 0.18s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+  h1.page-title { font-size: 22px; font-weight: 600; color: var(--heading); margin: 0; }
+  .page-sub { font-size: 13.5px; color: var(--muted); margin: 6px 0 26px; }
+
+  /* Typewriter caret shown on the greeting while it's "typing" */
+  .typing-caret::after {
+    content: "|"; display: inline-block; margin-left: 2px; color: var(--teal-500);
+    animation: caret-blink 0.8s step-end infinite;
+  }
+  @keyframes caret-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; color: #fff; background: var(--teal-700); flex-shrink: 0; object-fit: cover; }
+  .avatar.lg { width: 76px; height: 76px; font-size: 24px; }
+
+  .section-label { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted-strong); margin: 28px 0 14px; }
+  .empty-note { color: var(--muted-soft); font-size: 13.5px; padding: 20px 0; text-align: center; }
+  .access-denied { padding: 80px 20px; text-align: center; color: var(--muted-soft); font-size: 15px; }
+  .back-link { font-size: 13px; color: var(--heading); cursor: pointer; margin-bottom: 18px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+  .back-link:hover { text-decoration: underline; }
+
+  /* Home header + notification bell */
+  .home-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .notif-wrap { position: relative; }
+  .notif-bell { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 16px; cursor: pointer; position: relative; }
+  .notif-badge { position: absolute; top: -4px; right: -4px; background: var(--red-500); color: #fff; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 5px; display: none; min-width: 14px; text-align: center; }
+  .notif-badge.show { display: inline-block; }
+  .notif-dropdown { display: none; position: absolute; right: 0; top: 44px; width: 300px; max-height: 360px; overflow-y: auto; background: var(--surface); border-radius: 8px; box-shadow: 0 4px 16px rgba(15,32,39,0.15); z-index: 20; }
+  .notif-dropdown.show { display: block; }
+  .notif-item { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .notif-item.unread { background: rgba(31,158,143,0.06); }
+  .notif-item .notif-time { font-size: 11px; color: var(--muted-soft); margin-top: 3px; }
+
+  /* Info card */
+  .info-card { background: var(--surface); border-radius: 12px; padding: 24px 28px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); margin-bottom: 8px; display: flex; align-items: center; gap: 24px; }
+  .info-photo-wrap img, .info-photo-wrap .avatar { width: 76px; height: 76px; font-size: 24px; }
+  .info-details { flex: 1; }
+  .info-details h2 { margin: 0 0 12px; font-size: 19px; color: var(--ink); }
+  .info-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--muted-strong); font-weight: 600; }
+
+  /* Home — requests overview */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+  .stat-tile { background: var(--surface); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); text-align: center; }
+  .stat-tile .num { font-size: 26px; font-weight: 700; color: var(--heading); }
+  .stat-tile .lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .stat-tile.urgent .num { color: var(--amber-500); }
+
+  .lab-recent-row { background: var(--surface); border-radius: 10px; padding: 13px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(15,32,39,0.06); transition: box-shadow 0.15s ease; }
+  .lab-recent-row:hover { box-shadow: 0 3px 10px rgba(15,32,39,0.1); }
+  .lab-recent-row .lr-main { flex: 1; min-width: 0; }
+  .lab-recent-row .lr-test { font-size: 14px; font-weight: 600; }
+  .lab-recent-row .lr-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* Department cards */
+  .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .dept-card { background: var(--surface); border-radius: 12px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; border-left: 4px solid var(--teal-300); }
+  .dept-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,32,39,0.12); }
+  .dept-card .dept-name { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .dept-card .dept-stats { display: flex; gap: 14px; font-size: 12px; color: var(--muted-strong); }
+  .dept-card .dept-stats b { color: var(--heading); }
+  .urgent-flag { color: var(--red-500); font-weight: 700; }
+
+  /* Patient cards */
+  .patient-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .patient-card { background: var(--surface); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .patient-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,32,39,0.12); }
+  .patient-card .p-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .patient-card .p-header .avatar { width: 42px; height: 42px; font-size: 14px; }
+  .patient-card .p-name { font-size: 14.5px; font-weight: 700; }
+  .patient-card .p-id { font-size: 11.5px; color: var(--muted); font-family: 'Courier New', monospace; }
+  .patient-card .p-stats { font-size: 12.5px; color: var(--muted-strong); }
+
+  /* Search bar */
+  .search-bar { margin-bottom: 20px; }
+  .search-bar input { width: 100%; max-width: 380px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; }
+  .search-bar input:focus { outline: none; border-color: var(--teal-300); box-shadow: 0 0 0 3px rgba(31,158,143,0.12); }
+
+  /* Patient lab page */
+  .patient-header-card { background: var(--surface); border-radius: 12px; padding: 22px 26px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); display: flex; align-items: center; gap: 18px; margin-bottom: 28px; }
+  .patient-header-card .avatar { width: 56px; height: 56px; font-size: 18px; }
+  .patient-header-card h2 { margin: 0 0 4px; font-size: 18px; }
+  .patient-header-card .sub { font-size: 12.5px; color: var(--muted-strong); }
+
+  .request-card { background: var(--surface); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(15,32,39,0.08); padding: 20px 24px; }
+  .request-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .request-top .test-name { font-size: 15.5px; font-weight: 700; }
+  .request-top .req-meta { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+  .status-badge { font-size: 11px; font-weight: 700; padding: 5px 13px; border-radius: 20px; text-transform: uppercase; white-space: nowrap; }
+  .status-badge.Pending { background: rgba(201,138,62,0.14); color: var(--amber-500); }
+  .status-badge.Finished-Result-Ready-Not-Collected { background: rgba(31,158,143,0.14); color: var(--heading); }
+  .status-badge.Finished-Result-Collected { background: rgba(47,125,92,0.14); color: var(--green-500); }
+
+  .status-select-row { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
+  .status-select-row select { padding: 9px 12px; border-radius: 7px; border: 1px solid var(--line); font-size: 13px; }
+  .status-select-row select:disabled { opacity: 0.6; cursor: wait; }
+  .status-save-note { font-size: 12px; color: var(--green-500); font-weight: 600; }
+  .status-save-note.is-error { color: var(--red-500); }
+
+  /* Drag and drop upload */
+  .dropzone {
+    margin-top: 16px; border: 2px dashed var(--line); border-radius: 10px; padding: 24px;
+    text-align: center; font-size: 13px; color: var(--muted); cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .dropzone.dragover { border-color: var(--teal-300); background: rgba(31,158,143,0.06); color: var(--heading); }
+  .dropzone input { display: none; }
+
+  .file-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+  .file-item { width: 120px; }
+  .file-item .thumb { width: 120px; height: 90px; border-radius: 8px; object-fit: cover; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .file-item .fname { font-size: 11px; color: var(--muted-strong); margin-top: 6px; word-break: break-word; }
+  .file-item .flinks { display: flex; gap: 8px; margin-top: 4px; }
+  .file-item .flinks a { font-size: 10.5px; color: var(--heading); font-weight: 600; text-decoration: none; }
+  .file-item .flinks a:hover { text-decoration: underline; }
+
+  .notes-row { display: flex; gap: 8px; margin-top: 16px; }
+  .notes-row input { flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; }
+  .notes-row button { padding: 9px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; }
+
+  .lab-note-red { color: var(--red-500); font-weight: 600; font-size: 12.5px; margin-top: 10px; background: rgba(181,68,46,0.08); border-radius: 6px; padding: 8px 12px; }
+
+  /* Avatar color variety */
+  .avatar.c-pink { background: #f4c0d1; color: #4b1528; }
+  .avatar.c-purple { background: #cecbf6; color: #26215c; }
+  .avatar.c-teal { background: var(--teal-700); color: #fff; }
+  .avatar.c-amber { background: #f6dcb8; color: #6b4413; }
+
+  @media (max-width: 767px) {
+    body { flex-direction: column; background: var(--paper); }
+    main { padding: 20px; max-width: 100%; }
+
+    .home-header-row { flex-wrap: nowrap; gap: 10px; align-items: flex-start; }
+    h1.page-title#greeting-title { font-size: 17px; }
+    .notif-bell { background: var(--surface); border-radius: 10px; }
+
+    .info-card, .dept-card, .patient-card, .request-card, .lab-recent-row, .stat-tile { border-radius: 14px; }
+    .info-card { padding: 16px; gap: 14px; }
+    .info-details h2 { font-size: 16px; }
+    .info-row { font-size: 12.5px; }
+    .section-label { font-size: 10.5px; letter-spacing: 1px; margin: 22px 0 10px; }
+
+    .patient-header-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .status-select-row { flex-wrap: wrap; }
+
+    /* Bottom tab bar */
+    .mobile-bottom-nav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+      background: var(--surface); border-top: 0.5px solid var(--line);
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+    .mobile-bottom-nav .mbn-btn {
+      flex: 1; background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      font-size: 9px !important; color: var(--muted-strong, var(--muted-strong));
+      padding: 4px 0 !important; text-align: center;
+    }
+    .mobile-bottom-nav .mbn-btn i { font-size: 19px; }
+    .mobile-bottom-nav .mbn-btn.active { color: var(--teal-800); font-weight: 600; }
+  }
+
+  @media (min-width: 768px) {
+    .mobile-bottom-nav { display: none !important; }
+  }
+</style>
+<link rel="stylesheet" href="assets/mobile-nav.css">
+</head>
+<body class="has-bottom-nav">
+
+<button class="theme-toggle-btn" aria-label="Toggle dark mode"></button>
+
+<div class="mobile-topbar">
+  <div class="mt-brand"><img src="assets/logo.png" alt="Ri'aya logo"><span>رعاية Blood Bank</span></div>
+  <div class="mt-actions">
+    <button class="theme-toggle-btn theme-toggle-btn-mobile" aria-label="Toggle dark mode"></button>
+    <button class="hamburger-btn" id="mobile-logout-btn" aria-label="Sign out"><i class="ti ti-logout"></i></button>
+  </div>
+</div>
+<div class="nav-overlay" id="nav-overlay"></div>
+<script>initThemeToggle();</script>
+
+<div class="mobile-bottom-nav">
+  <button class="mbn-btn nav-btn active" data-tab="home"><i class="ti ti-home"></i>Home</button>
+  <button class="mbn-btn nav-btn" data-tab="requests"><i class="ti ti-droplet"></i>Requests</button>
+</div>
+
+<nav>
+  <div class="brand"><img src="assets/logo.png" alt="Ri'aya logo"><div><span class="ar">رعاية</span><br><span class="en">Blood Bank</span></div></div>
+  <div class="sidebar-profile">
+    <span id="sidebar-profile-photo"></span>
+    <span id="sidebar-profile-name">—</span>
+  </div>
+  <button class="nav-btn active" data-tab="home">Home</button>
+  <button class="nav-btn" data-tab="requests">Requests</button>
+  <div class="nav-spacer"></div>
+  <button id="logout-btn">Sign out</button>
+</nav>
+
+<main>
+
+  <!-- ══════════════ HOME TAB ══════════════ -->
+  <div class="tab-panel active" id="tab-home">
+    <div class="home-header-row">
+      <h1 class="page-title" id="greeting-title">Home</h1>
+      <div class="notif-wrap">
+        <button class="notif-bell" id="notif-bell"><i class="ti ti-bell"></i><span class="notif-badge" id="notif-badge">0</span></button>
+        <div class="notif-dropdown" id="notif-dropdown"></div>
+      </div>
+    </div>
+
+    <div class="info-card" id="info-card">
+      <div class="info-photo-wrap" id="info-photo-wrap"></div>
+      <div class="info-details">
+        <h2 id="info-name-h2">—</h2>
+        <div class="info-row"><span class="info-label">Title</span><span id="info-title">—</span></div>
+        <div class="info-row"><span class="info-label">Department</span><span id="info-dept">—</span></div>
+        <div class="info-row"><span class="info-label">Specialty</span><span id="info-specialty">—</span></div>
+        <div class="info-row"><span class="info-label">Staff ID</span><span id="info-id">—</span></div>
+        <div class="info-row"><span class="info-label">Status</span><span id="info-status">—</span></div>
+      </div>
+    </div>
+
+    <p class="section-label">Requests overview</p>
+    <div class="stat-grid" id="lab-stats-grid">
+      <div class="stat-tile"><div class="num">—</div><div class="lbl">Total requests</div></div>
+      <div class="stat-tile urgent"><div class="num">—</div><div class="lbl">Pending</div></div>
+      <div class="stat-tile"><div class="num">—</div><div class="lbl">Ready — not collected</div></div>
+      <div class="stat-tile"><div class="num">—</div><div class="lbl">Collected</div></div>
+    </div>
+
+    <p class="section-label">Most recent blood bank requests</p>
+    <div id="lab-recent-list"><div class="empty-note">Loading…</div></div>
+  </div>
+
+  <!-- ══════════════ REQUESTS TAB ══════════════ -->
+  <div class="tab-panel" id="tab-requests">
+    <div id="main-content"></div>
+  </div>
+
+</main>
+
+<script>
+  const SUPABASE_URL = "https://etvrquzjlgzmysbxlrev.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dnJxdXpqbGd6bXlzYnhscmV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2ODEyOTgsImV4cCI6MjA5OTI1NzI5OH0.zIgWMsOzp-agiVOe-cnOx4qgA-FUsU-fGbgVCvW_Yjg";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  IdleLogout.init(supabaseClient); // auto sign-out after inactivity — see assets/idle-logout.js
+
+  const STATUSES = ["Pending", "Finished (Result Ready - Not Collected)", "Finished (Result Collected)"];
+
+  let me = null;
+  let allRequests = []; // every lab_request, joined with patient info
+  let view = "departments"; // "departments" | "patients" | "patient-detail"
+  let activeDept = null;
+  let activePatientId = null;
+
+  // ══════════════════════════════════════════════════════════════
+  // TAB SWITCHING (shared between sidebar nav and mobile bottom nav)
+  // ══════════════════════════════════════════════════════════════
+  document.querySelectorAll(".nav-btn[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn[data-tab]").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      document.querySelectorAll(`.nav-btn[data-tab="${btn.dataset.tab}"]`).forEach((b) => b.classList.add("active"));
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  document.getElementById("mobile-logout-btn")?.addEventListener("click", () => {
+    document.getElementById("logout-btn").click();
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════════════════════════════
+  function initials(name) {
+    if (!name) return "?";
+    const parts = name.replace(/^Dr\.?\s*/i, "").trim().split(/\s+/);
+    return (parts[0]?.[0] || "").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function statusClass(status) {
+    return status.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function isImage(filename) {
+    return /\.(png|jpe?g)$/i.test(filename);
+  }
+
+  function avatarColorClass(id) {
+    const colors = ["c-pink", "c-purple", "c-teal", "c-amber"];
+    const str = String(id || "");
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    return colors[hash % colors.length];
+  }
+
+  function avatarHtml(person, sizeClass) {
+    const cls = sizeClass ? `avatar ${sizeClass}` : "avatar";
+    if (person.photo_url) {
+      return `<img class="${cls}" src="${person.photo_url}" alt="${person.full_name}">`;
+    }
+    return `<div class="${cls} ${avatarColorClass(person.user_id)}">${initials(person.full_name)}</div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HOME — GREETING + INFO CARD
+  // ══════════════════════════════════════════════════════════════
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good morning ☀️";
+    if (hour >= 12 && hour < 17) return "Good afternoon 🌤️";
+    if (hour >= 17 && hour < 21) return "Good evening 🌆";
+    return "Good night 🌙";
+  }
+
+  function typeWriter(el, text, speed = 45) {
+    if (el._typeWriterTimer) clearInterval(el._typeWriterTimer);
+    el.textContent = "";
+    el.classList.add("typing-caret");
+    let i = 0;
+    el._typeWriterTimer = setInterval(() => {
+      i++;
+      el.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        clearInterval(el._typeWriterTimer);
+        el._typeWriterTimer = null;
+        el.classList.remove("typing-caret");
+      }
+    }, speed);
+  }
+
+  function renderInfoCard() {
+    document.getElementById("info-photo-wrap").innerHTML = avatarHtml(me, "lg");
+    document.getElementById("info-name-h2").textContent = me.full_name;
+    document.getElementById("info-title").textContent = me.title || "Blood Bank Technician";
+    document.getElementById("info-dept").textContent = me.department || "—";
+    document.getElementById("info-specialty").textContent = me.specialty || "—";
+    document.getElementById("info-id").textContent = me.doctor_code || me.user_id.slice(0, 8);
+    document.getElementById("info-status").textContent = me.status === "inactive" ? "Inactive" : "Active";
+
+    typeWriter(document.getElementById("greeting-title"), `${getGreeting()}, ${me.full_name}`);
+
+    document.getElementById("sidebar-profile-photo").innerHTML = avatarHtml(me);
+    document.getElementById("sidebar-profile-name").textContent = me.full_name;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HOME — REQUESTS OVERVIEW (stats + recent list)
+  // ══════════════════════════════════════════════════════════════
+  function renderHomeStats() {
+    const total = allRequests.length;
+    const pending = allRequests.filter((r) => r.status === "Pending").length;
+    const ready = allRequests.filter((r) => r.status === "Finished (Result Ready - Not Collected)").length;
+    const collected = allRequests.filter((r) => r.status === "Finished (Result Collected)").length;
+
+    const grid = document.getElementById("lab-stats-grid");
+    grid.innerHTML = `
+      <div class="stat-tile"><div class="num">${total}</div><div class="lbl">Total requests</div></div>
+      <div class="stat-tile urgent"><div class="num">${pending}</div><div class="lbl">Pending</div></div>
+      <div class="stat-tile"><div class="num">${ready}</div><div class="lbl">Ready — not collected</div></div>
+      <div class="stat-tile"><div class="num">${collected}</div><div class="lbl">Collected</div></div>
+    `;
+
+    const recentList = document.getElementById("lab-recent-list");
+    const recent = allRequests.slice(0, 5);
+    if (recent.length === 0) {
+      recentList.innerHTML = `<div class="empty-note">No laboratory requests yet.</div>`;
+      return;
+    }
+    recentList.innerHTML = recent.map((r) => `
+      <div class="lab-recent-row" data-recent-dept="${r.department}" data-recent-patient="${r.patient_id}">
+        <div class="lr-main">
+          <div class="lr-test">${r.test_name}</div>
+          <div class="lr-meta">${r.patients?.full_name || "Unknown patient"} · ${r.department} · ${formatDateTime(r.requested_at)}</div>
+        </div>
+        <span class="status-badge ${statusClass(r.status)}">${r.status}</span>
+      </div>
+    `).join("");
+
+    recentList.querySelectorAll("[data-recent-dept]").forEach((row) => {
+      row.addEventListener("click", () => {
+        activeDept = row.dataset.recentDept;
+        activePatientId = Number(row.dataset.recentPatient);
+        view = "patient-detail";
+        render();
+        document.querySelector('.nav-btn[data-tab="requests"]').click();
+      });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // NOTIFICATIONS
+  // ══════════════════════════════════════════════════════════════
+  async function refreshNotifBadge() {
+    const { count } = await supabaseClient
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", me.user_id)
+      .eq("is_read", false);
+
+    const badge = document.getElementById("notif-badge");
+    if (count && count > 0) {
+      badge.textContent = count > 9 ? "9+" : String(count);
+      badge.classList.add("show");
+    } else {
+      badge.classList.remove("show");
+    }
+  }
+
+  async function loadNotifDropdown() {
+    const dropdown = document.getElementById("notif-dropdown");
+    const { data } = await supabaseClient
+      .from("notifications")
+      .select("id, type, content, is_read, created_at")
+      .eq("user_id", me.user_id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (!data || data.length === 0) {
+      dropdown.innerHTML = `<div class="empty-note" style="padding:16px;">No notifications yet.</div>`;
+      return;
+    }
+
+    dropdown.innerHTML = data.map((n) => `
+      <div class="notif-item ${n.is_read ? "" : "unread"}">
+        ${n.content}
+        <div class="notif-time">${formatDateTime(n.created_at)}</div>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("notif-bell").addEventListener("click", async () => {
+    const dropdown = document.getElementById("notif-dropdown");
+    const opening = !dropdown.classList.contains("show");
+    dropdown.classList.toggle("show");
+
+    if (opening) {
+      await loadNotifDropdown();
+      await supabaseClient.from("notifications").update({ is_read: true }).eq("user_id", me.user_id).eq("is_read", false);
+      refreshNotifBadge();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    const wrap = document.querySelector(".notif-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById("notif-dropdown").classList.remove("show");
+    }
+  });
+
+  function setupRealtimeNotifications() {
+    supabaseClient
+      .channel("notifications-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => {
+        refreshNotifBadge();
+        if (document.getElementById("notif-dropdown").classList.contains("show")) loadNotifDropdown();
+      })
+      .subscribe();
+  }
+
+  function setupRealtimeOwnProfile() {
+    supabaseClient
+      .channel("own-profile-realtime")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${me.user_id}` }, (payload) => {
+        me = { ...me, ...payload.new };
+        renderInfoCard();
+      })
+      .subscribe();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // DATA LOADING — one query, grouped client-side
+  // ══════════════════════════════════════════════════════════════
+  // A monotonically increasing token guards against out-of-order responses:
+  // if the manual reload after an update and a realtime-triggered reload
+  // both fire close together, the network responses can arrive in the
+  // wrong order — an older, slower response would otherwise land last and
+  // silently overwrite the newer data, making a just-saved status change
+  // appear to "revert" back to Pending.
+  let requestsFetchToken = 0;
+
+  async function loadAllRequests() {
+    const myToken = ++requestsFetchToken;
+    const { data, error } = await supabaseClient
+      .from("lab_requests")
+      .select("id, patient_id, department, test_name, status, requested_at, completed_at, result_collected_at, requested_by_name, notes, patients(full_name, patient_number)")
+      .eq("service", "Blood Bank")
+      .order("requested_at", { ascending: false });
+
+    if (myToken !== requestsFetchToken) return; // a newer request already superseded this one
+
+    if (error) {
+      document.getElementById("main-content").innerHTML = `<div class="empty-note">Couldn't load requests: ${error.message}</div>`;
+      return;
+    }
+    allRequests = data || [];
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW 1: DEPARTMENTS — only ones with active requests
+  // ══════════════════════════════════════════════════════════════
+  function renderDepartments() {
+    const deptMap = {};
+    allRequests.forEach((r) => {
+      deptMap[r.department] = deptMap[r.department] || { patients: new Set(), pending: 0 };
+      deptMap[r.department].patients.add(r.patient_id);
+      if (r.status === "Pending") deptMap[r.department].pending++;
+    });
+
+    const depts = Object.keys(deptMap).sort();
+
+    const main = document.getElementById("main-content");
+    if (depts.length === 0) {
+      main.innerHTML = `<h1 class="page-title">Requests</h1><p class="page-sub">Every laboratory request, grouped by department.</p><div class="empty-note">No laboratory requests yet.</div>`;
+      return;
+    }
+
+    main.innerHTML = `
+      <h1 class="page-title">Requests</h1>
+      <p class="page-sub">Select a department to see patients with laboratory requests.</p>
+      <div class="dept-grid">
+        ${depts.map((d) => `
+          <div class="dept-card" data-dept="${d}">
+            <div class="dept-name">${d}</div>
+            <div class="dept-stats">
+              <span><b>${deptMap[d].patients.size}</b> patient${deptMap[d].patients.size === 1 ? "" : "s"}</span>
+              ${deptMap[d].pending > 0 ? `<span class="urgent-flag">${deptMap[d].pending} pending</span>` : `<span>All handled</span>`}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    main.querySelectorAll("[data-dept]").forEach((card) => {
+      card.addEventListener("click", () => { activeDept = card.dataset.dept; view = "patients"; render(); });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW 2: PATIENTS IN A DEPARTMENT (only those with requests)
+  // ══════════════════════════════════════════════════════════════
+  function renderPatientsInDept() {
+    const deptRequests = allRequests.filter((r) => r.department === activeDept);
+    const patientMap = {};
+    deptRequests.forEach((r) => {
+      if (!patientMap[r.patient_id]) {
+        patientMap[r.patient_id] = {
+          id: r.patient_id,
+          full_name: r.patients?.full_name || "Unknown",
+          patient_number: r.patients?.patient_number || "—",
+          total: 0, pending: 0,
+        };
+      }
+      patientMap[r.patient_id].total++;
+      if (r.status === "Pending") patientMap[r.patient_id].pending++;
+    });
+
+    let list = Object.values(patientMap);
+    const query = document.getElementById("patient-search")?.value.trim().toLowerCase() || "";
+    if (query) {
+      list = list.filter((p) => p.full_name.toLowerCase().includes(query) || p.patient_number.toLowerCase().includes(query));
+    }
+
+    const main = document.getElementById("main-content");
+    main.innerHTML = `
+      <span class="back-link" id="back-to-depts">← All departments</span>
+      <h1 class="page-title">${activeDept}</h1>
+      <p class="page-sub">Patients with laboratory requests in this department.</p>
+      <div class="search-bar"><input type="text" id="patient-search" placeholder="Search by name or patient ID…" value="${query}"></div>
+      <div class="patient-grid" id="patient-grid"></div>
+    `;
+
+    const gridEl = document.getElementById("patient-grid");
+    if (list.length === 0) {
+      gridEl.innerHTML = `<div class="empty-note">No matching patients.</div>`;
+    } else {
+      gridEl.innerHTML = list.map((p) => `
+        <div class="patient-card" data-patient="${p.id}">
+          <div class="p-header">
+            <div class="avatar">${initials(p.full_name)}</div>
+            <div>
+              <div class="p-name">${p.full_name}</div>
+              <div class="p-id">${p.patient_number}</div>
+            </div>
+          </div>
+          <div class="p-stats">${p.total} request${p.total === 1 ? "" : "s"} ${p.pending > 0 ? `· <span class="urgent-flag">${p.pending} pending</span>` : "· all handled"}</div>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("back-to-depts").addEventListener("click", () => { view = "departments"; render(); });
+    document.getElementById("patient-search").addEventListener("input", renderPatientsInDept);
+    gridEl.querySelectorAll("[data-patient]").forEach((card) => {
+      card.addEventListener("click", () => { activePatientId = Number(card.dataset.patient); view = "patient-detail"; render(); });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW 3: PATIENT LAB PAGE — every request, upload, status change
+  // ══════════════════════════════════════════════════════════════
+  async function renderPatientDetail() {
+    const patientRequests = allRequests.filter((r) => r.patient_id === activePatientId && r.department === activeDept);
+    const patientInfo = patientRequests[0]?.patients || { full_name: "Unknown", patient_number: "—" };
+
+    const main = document.getElementById("main-content");
+    main.innerHTML = `
+      <span class="back-link" id="back-to-patients">← ${activeDept}</span>
+      <div class="patient-header-card">
+        <div class="avatar">${initials(patientInfo.full_name)}</div>
+        <div>
+          <h2>${patientInfo.full_name}</h2>
+          <div class="sub">${patientInfo.patient_number} · ${activeDept}</div>
+        </div>
+      </div>
+      <div id="requests-container"></div>
+    `;
+    document.getElementById("back-to-patients").addEventListener("click", () => { view = "patients"; render(); });
+
+    const container = document.getElementById("requests-container");
+    if (patientRequests.length === 0) {
+      container.innerHTML = `<div class="empty-note">No laboratory requests for this patient.</div>`;
+      return;
+    }
+
+    const { data: files } = await supabaseClient
+      .from("lab_files")
+      .select("id, lab_request_id, file_url, file_name")
+      .in("lab_request_id", patientRequests.map((r) => r.id));
+
+    const filesByRequest = {};
+    (files || []).forEach((f) => {
+      filesByRequest[f.lab_request_id] = filesByRequest[f.lab_request_id] || [];
+      filesByRequest[f.lab_request_id].push(f);
+    });
+
+    container.innerHTML = patientRequests.map((r) => {
+      const attached = filesByRequest[r.id] || [];
+      const fileGridHtml = attached.map((f) => `
+        <div class="file-item">
+          ${isImage(f.file_name) ? `<img class="thumb" src="${f.file_url}" alt="${f.file_name}">` : `<div class="thumb">📄</div>`}
+          <div class="fname">${f.file_name}</div>
+          <div class="flinks">
+            <a href="${f.file_url}" target="_blank">View</a>
+            <a href="${f.file_url}" download="${f.file_name}">Download</a>
+          </div>
+        </div>
+      `).join("");
+
+      return `
+        <div class="request-card" data-request-id="${r.id}">
+          <div class="request-top">
+            <div>
+              <div class="test-name">${r.test_name}</div>
+              <div class="req-meta">
+                Requested by ${r.requested_by_name || "Unknown"} · ${formatDateTime(r.requested_at)}<br>
+                ${r.completed_at ? `Completed ${formatDateTime(r.completed_at)}` : "Not yet completed"}
+                ${r.result_collected_at ? ` · Collected ${formatDateTime(r.result_collected_at)}` : ""}
+              </div>
+              ${r.notes ? `<div class="lab-note-red">⚠ ${r.notes}</div>` : ""}
+            </div>
+            <span class="status-badge ${statusClass(r.status)}">${r.status}</span>
+          </div>
+
+          <div class="status-select-row">
+            <select id="status-${r.id}" data-status-select="${r.id}">
+              ${STATUSES.map((s) => `<option value="${s}" ${s === r.status ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+            <span class="status-save-note" id="status-saved-${r.id}"></span>
+          </div>
+
+          <div class="dropzone" id="dropzone-${r.id}">
+            Drag files here, or click to choose — PDF, PNG, JPG, JPEG
+            <input type="file" id="file-input-${r.id}" accept=".pdf,.png,.jpg,.jpeg" multiple>
+          </div>
+
+          ${attached.length > 0 ? `<div class="file-grid">${fileGridHtml}</div>` : ""}
+
+          <div class="notes-row">
+            <input type="text" id="notes-${r.id}" placeholder="Notes for the doctor…" value="${r.notes || ""}">
+            <button data-save-notes="${r.id}">Save</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll("[data-status-select]").forEach((select) => {
+      select.addEventListener("change", () => updateStatus(Number(select.dataset.statusSelect)));
+    });
+
+    container.querySelectorAll("[data-save-notes]").forEach((btn) => {
+      btn.addEventListener("click", () => saveNotes(Number(btn.dataset.saveNotes)));
+    });
+
+    patientRequests.forEach((r) => {
+      const zone = document.getElementById(`dropzone-${r.id}`);
+      const input = document.getElementById(`file-input-${r.id}`);
+
+      zone.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => uploadFiles(r.id, input.files));
+
+      zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("dragover"); });
+      zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+      zone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        uploadFiles(r.id, e.dataTransfer.files);
+      });
+    });
+  }
+
+  // Updates one request-card's status badge + meta text directly in the
+  // DOM, without touching anything else on the page (dropzone, notes,
+  // scroll position, etc.) — used instead of a full render() so changing
+  // a status doesn't jump the page back to the top or visibly "flash".
+  function patchRequestCardStatus(requestId) {
+    const r = allRequests.find((req) => req.id === requestId);
+    if (!r) return;
+
+    const card = document.querySelector(`.request-card[data-request-id="${requestId}"]`);
+    if (!card) return; // this request isn't currently on screen — nothing to patch
+
+    const badge = card.querySelector(".status-badge");
+    if (badge) {
+      badge.className = `status-badge ${statusClass(r.status)}`;
+      badge.textContent = r.status;
+    }
+
+    const metaEl = card.querySelector(".req-meta");
+    if (metaEl) {
+      metaEl.innerHTML = `
+        Requested by ${r.requested_by_name || "Unknown"} · ${formatDateTime(r.requested_at)}<br>
+        ${r.completed_at ? `Completed ${formatDateTime(r.completed_at)}` : "Not yet completed"}
+        ${r.result_collected_at ? ` · Collected ${formatDateTime(r.result_collected_at)}` : ""}
+      `;
+    }
+
+    const select = document.getElementById(`status-${requestId}`);
+    if (select && select.value !== r.status) select.value = r.status;
+  }
+
+  async function updateStatus(requestId) {
+    const select = document.getElementById(`status-${requestId}`);
+    const noteEl = document.getElementById(`status-saved-${requestId}`);
+    const newStatus = select.value;
+    const updates = { status: newStatus };
+
+    if (newStatus === "Finished (Result Ready - Not Collected)") {
+      updates.completed_at = new Date().toISOString();
+    }
+    if (newStatus === "Finished (Result Collected)") {
+      updates.result_collected_at = new Date().toISOString();
+    }
+
+    select.disabled = true;
+    if (noteEl) { noteEl.textContent = "Saving…"; noteEl.classList.remove("is-error"); }
+
+    const { data, error } = await supabaseClient
+      .from("lab_requests")
+      .update(updates)
+      .eq("id", requestId)
+      .select("id, status, completed_at, result_collected_at")
+      .single();
+
+    select.disabled = false;
+
+    if (error) {
+      if (noteEl) { noteEl.textContent = "Couldn't save: " + error.message; noteEl.classList.add("is-error"); }
+      return;
+    }
+    if (!data) {
+      if (noteEl) { noteEl.textContent = "Not saved — check your permissions."; noteEl.classList.add("is-error"); }
+      return;
+    }
+
+    // Apply the confirmed update straight from the response instead of
+    // re-fetching the whole list — instant, and immune to the reload race
+    // that used to make a just-saved status appear to revert.
+    const r = allRequests.find((req) => req.id === requestId);
+    if (r) Object.assign(r, data);
+
+    // Patch just this card in place — no full render(), so the page
+    // doesn't flash or jump back to the top.
+    patchRequestCardStatus(requestId);
+    renderHomeStats();
+
+    if (noteEl) {
+      noteEl.textContent = "Saved ✓";
+      setTimeout(() => { if (noteEl.isConnected) noteEl.textContent = ""; }, 1500);
+    }
+  }
+
+  async function uploadFiles(requestId, fileList) {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    for (const file of files) {
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!["pdf", "png", "jpg", "jpeg"].includes(ext)) {
+        alert(`${file.name} isn't a supported format (PDF, PNG, JPG, JPEG only) — skipped.`);
+        continue;
+      }
+
+      const filePath = `${requestId}-${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabaseClient.storage.from("lab-reports").upload(filePath, file);
+      if (uploadError) { alert(`Couldn't upload ${file.name}: ` + uploadError.message); continue; }
+
+      const { data: publicUrlData } = supabaseClient.storage.from("lab-reports").getPublicUrl(filePath);
+
+      await supabaseClient.from("lab_files").insert({
+        lab_request_id: requestId,
+        file_url: publicUrlData.publicUrl,
+        file_name: file.name,
+        uploaded_by: me.user_id,
+      });
+    }
+
+    await loadAllRequests();
+    render();
+  }
+
+  async function saveNotes(requestId) {
+    const notes = document.getElementById(`notes-${requestId}`).value.trim();
+
+    const { data, error } = await supabaseClient
+      .from("lab_requests")
+      .update({ notes })
+      .eq("id", requestId)
+      .select();
+
+    if (error) {
+      alert("Couldn't save note: " + error.message);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      alert("The note wasn't saved — you may not have permission to update this request.");
+      return;
+    }
+
+    const r = allRequests.find((req) => req.id === requestId);
+    if (r) r.notes = notes;
+
+    const btn = document.querySelector(`[data-save-notes="${requestId}"]`);
+    if (btn) {
+      const original = btn.textContent;
+      btn.textContent = "Saved ✓";
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  }
+
+  function render() {
+    if (view === "departments") renderDepartments();
+    else if (view === "patients") renderPatientsInDept();
+    else if (view === "patient-detail") renderPatientDetail();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ENTRY POINT
+  // ══════════════════════════════════════════════════════════════
+  function setupRealtimeLabRequests() {
+    supabaseClient
+      .channel("lab-dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_requests" }, async (payload) => {
+        await loadAllRequests();
+        renderHomeStats();
+
+        const changedId = payload.new?.id ?? payload.old?.id;
+        // If we're already looking at the patient this change belongs to,
+        // just patch that one card in place — avoids the full re-render
+        // that was causing the page to flash and jump back to the top
+        // (both from this client's own update AND the realtime echo of it).
+        if (view === "patient-detail" && changedId != null && document.querySelector(`.request-card[data-request-id="${changedId}"]`)) {
+          patchRequestCardStatus(changedId);
+        } else {
+          render();
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_files" }, async () => {
+        await loadAllRequests();
+        render();
+      })
+      .subscribe();
+  }
+
+  // Retries a network call a few times with increasing delay before giving
+  // up — a single dropped request on bad wifi/4G shouldn't be enough to
+  // break the whole page load.
+  async function withRetry(fn, { retries = 3, baseDelayMs = 800 } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try { return await fn(); }
+      catch (err) {
+        lastErr = err;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
+      }
+    }
+    throw lastErr;
+  }
+
+  function showConnectionTroubleScreen(retryFn) {
+    const host = document.querySelector("main") || document.body;
+    host.innerHTML = `
+      <div class="empty-note" style="max-width:420px; margin:60px auto; text-align:center;">
+        <div style="font-size:28px; margin-bottom:10px;">📶</div>
+        <div style="font-weight:700; margin-bottom:6px;">Having trouble connecting</div>
+        <p style="margin:0 0 16px;">This can happen on weak wifi or cellular data. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" id="connection-retry-btn">Retry</button>
+      </div>
+    `;
+    document.getElementById("connection-retry-btn").addEventListener("click", retryFn);
+  }
+
+  async function init() {
+    const { data: { session } } = await withRetry(() => supabaseClient.auth.getSession());
+    if (!session) { window.location.href = "index.html"; return; }
+
+    const { data: profile } = await withRetry(() => supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, department, role, status, title, photo_url, specialty, doctor_code")
+      .eq("user_id", session.user.id)
+      .single());
+
+    if (!profile || profile.role !== "blood_bank") {
+      document.querySelector("main").innerHTML = `<div class="access-denied">You don't have access to this page.</div>`;
+      document.querySelector("nav").style.display = "none";
+      document.querySelector(".mobile-bottom-nav").style.display = "none";
+      return;
+    }
+
+    me = profile;
+    renderInfoCard();
+    refreshNotifBadge();
+    setupRealtimeNotifications();
+    setupRealtimeOwnProfile();
+
+    await loadAllRequests();
+    render();
+    renderHomeStats();
+    setupRealtimeLabRequests();
+  }
+
+  init().catch((err) => {
+    console.error("init() failed after retries:", err);
+    showConnectionTroubleScreen(() => window.location.reload());
+  });
+</script>
+
+</body>
+</html>

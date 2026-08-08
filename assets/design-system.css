@@ -1,0 +1,195 @@
+/* ═══════════════════════════════════════════════════════════════
+   RI'AYA DESIGN SYSTEM
+   Shared across every page. One source of truth for color,
+   typography, spacing, and every reusable component (buttons,
+   badges, alerts, cards, forms). Redesign a page by using these
+   classes, not by inventing new ad-hoc styles.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Brand */
+  --ink: #0f2027;
+  --teal-950: #06211f;
+  --teal-900: #0b3d3a;
+  --teal-800: #0e5750;
+  --teal-700: #14746b;
+  --teal-500: #1f9e8f;
+  --teal-300: #6dcfc2;
+  --teal-100: #e3f5f2;
+
+  --paper: #f6f4ef;
+  --surface: #ffffff;
+  --line: #e2dfd4;
+  --line-strong: #cfc9b8;
+  --muted: #8a887d;
+  --muted-strong: #6b6a63;
+
+  /* Semantic */
+  --amber-500: #c98a3e;
+  --amber-100: #faf0e2;
+  --red-500: #b5442e;
+  --red-100: #fbe9e5;
+  --green-500: #2f7d5c;
+  --green-100: #e7f3ed;
+  --blue-500: #2f6fa8;
+  --blue-100: #e8f1f9;
+
+  /* Elevation */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(15,32,39,0.06);
+  --shadow-md: 0 6px 20px rgba(15,32,39,0.08);
+  --shadow-lg: 0 16px 40px rgba(15,32,39,0.16);
+
+  --font: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Semantic aliases so per-page CSS can theme correctly */
+  --heading: var(--teal-900);
+  --muted-soft: #9a988e;
+  --surface-alt: #eeece4;
+  --surface-hover: #f3f1ea;
+
+  color-scheme: light;
+}
+
+/* ── Dark mode ──
+   Toggled by setting data-theme="dark" on <html> (see assets/theme-toggle.js).
+   Brand teals (--teal-950…--teal-300) stay fixed — the sidebar/hero panels
+   are always dark-teal by design in both themes — only the neutral
+   surface/text/border scale and the pastel badge/alert backgrounds flip. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #eaf2f0;
+  --paper: #101d1c;
+  --surface: #172624;
+  --line: #2b3d3b;
+  --line-strong: #3c534f;
+  --muted: #8fa8a2;
+  --muted-strong: #b6c9c4;
+  --muted-soft: #7d938d;
+  --surface-alt: #1f312f;
+  --surface-hover: #24413d;
+  --heading: var(--teal-300);
+
+  --amber-100: rgba(201,138,62,0.18);
+  --red-100: rgba(181,68,46,0.2);
+  --green-100: rgba(47,125,92,0.2);
+  --blue-100: rgba(47,111,168,0.2);
+  --teal-100: rgba(31,158,143,0.18);
+}
+
+* { box-sizing: border-box; }
+body { font-family: var(--font); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--font); font-size: 13.5px; font-weight: 600;
+  padding: 10px 20px; border-radius: var(--radius-md); border: 1px solid transparent;
+  cursor: pointer; transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+}
+.btn:active { transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid var(--teal-500); outline-offset: 2px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-primary { background: var(--teal-900); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--teal-700); box-shadow: var(--shadow-md); }
+
+.btn-secondary { background: var(--surface); color: var(--heading); border-color: var(--line-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--paper); }
+
+.btn-danger { background: var(--red-500); color: #fff; }
+.btn-danger:hover:not(:disabled) { opacity: 0.9; box-shadow: var(--shadow-md); }
+
+.btn-success { background: var(--green-500); color: #fff; }
+.btn-success:hover:not(:disabled) { opacity: 0.9; box-shadow: var(--shadow-md); }
+
+.btn-ghost { background: transparent; color: var(--muted-strong); }
+.btn-ghost:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
+
+.btn-sm { padding: 6px 14px; font-size: 12.5px; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+  padding: 4px 11px; border-radius: var(--radius-full); line-height: 1.4;
+}
+.badge-neutral { background: var(--line); color: var(--muted-strong); }
+.badge-pending { background: var(--amber-100); color: var(--amber-500); }
+.badge-success { background: var(--green-100); color: var(--green-500); }
+.badge-danger  { background: var(--red-100); color: var(--red-500); }
+.badge-info    { background: var(--blue-100); color: var(--blue-500); }
+.badge-brand   { background: var(--teal-100); color: var(--heading); }
+
+/* ── Alerts ── */
+.alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.5;
+}
+.alert .alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.alert-warning { background: var(--amber-100); color: #7a5620; }
+.alert-success { background: var(--green-100); color: #1f5138; }
+.alert-info    { background: var(--blue-100); color: #1f4d73; }
+.alert-error   { background: var(--red-100); color: #7a2e1e; }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm); border: 1px solid transparent;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card-hover:hover { box-shadow: var(--shadow-md); }
+.card-selected { border-color: var(--teal-500); }
+
+/* ── Forms ── */
+.field-label {
+  display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+  color: var(--muted-strong); margin-bottom: 6px; text-transform: uppercase;
+}
+.field-input, .field-select {
+  width: 100%; padding: 11px 14px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md); font-size: 14px; font-family: var(--font);
+  background: var(--surface); color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field-input:focus, .field-select:focus {
+  outline: none; border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px rgba(31,158,143,0.14);
+}
+
+/* ── Utility ── */
+.section-heading {
+  font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--muted-strong); margin: 28px 0 14px;
+}
+.page-title { font-size: 23px; font-weight: 700; color: var(--heading); margin: 0; }
+.empty-state { color: var(--muted); font-size: 13.5px; padding: 32px 0; text-align: center; }
+
+/* ── Dark mode toggle button ──
+   One instance is fixed top-right for desktop; a second, differently
+   styled instance lives inside each page's .mobile-topbar for mobile
+   (mobile-nav.css hides whichever one doesn't apply). Both share the
+   .theme-toggle-btn class and are kept in sync by assets/theme-toggle.js. */
+.theme-toggle-btn {
+  position: fixed; top: 18px; right: 18px; z-index: 500;
+  width: 40px; height: 40px; border-radius: var(--radius-full);
+  background: var(--surface); border: 1px solid var(--line-strong);
+  color: var(--ink); font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.theme-toggle-btn:hover { box-shadow: var(--shadow-md); }
+.theme-toggle-btn:active { transform: scale(0.96); }
+
+/* ── Fade transitions for tab/page content ── */
+@keyframes fadein-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadein-up 0.2s ease; }

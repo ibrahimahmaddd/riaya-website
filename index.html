@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b3d3a">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<script src="assets/theme-toggle.js"></script>
+<script src="assets/register-sw.js"></script>
+<title>Ri'aya — Sign in</title>
+<script src="assets/vendor/supabase-js.min.js"></script>
+<link rel="stylesheet" href="assets/vendor/tabler-icons/tabler-icons.min.css">
+<link rel="stylesheet" href="assets/design-system.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--paper); color: var(--ink); }
+  body { display: flex; min-height: 100vh; }
+
+  /* ══════════════ LEFT: hero panel ══════════════ */
+  .hero-panel {
+    flex: 1.15; position: relative; overflow: hidden;
+    background: linear-gradient(155deg, var(--teal-950) 0%, var(--teal-800) 55%, var(--teal-500) 130%);
+    color: #f2f7f6; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 56px 60px 48px;
+  }
+  .hero-panel::before {
+    content: ""; position: absolute; right: -160px; top: -160px; width: 460px; height: 460px;
+    border-radius: 50%; border: 1px solid rgba(242,247,246,0.12);
+  }
+  .hero-panel::after {
+    content: ""; position: absolute; right: -60px; top: -60px; width: 300px; height: 300px;
+    border-radius: 50%; border: 1px solid rgba(242,247,246,0.1);
+  }
+
+  .hero-brand { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+  .hero-brand img { width: 46px; height: 46px; border-radius: 12px; background: #fff; padding: 4px; object-fit: contain; box-shadow: var(--shadow-md); }
+  .hero-brand .brand-text .ar { font-size: 20px; font-weight: 700; line-height: 1.2; }
+  .hero-brand .brand-text .en { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.75; }
+
+  .hero-copy { max-width: 440px; position: relative; z-index: 1; }
+  .hero-copy .eyebrow {
+    font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; opacity: 0.7; margin-bottom: 18px;
+    display: inline-block; padding: 5px 14px; border: 1px solid rgba(242,247,246,0.25); border-radius: var(--radius-full);
+  }
+  .hero-copy h1 { font-size: 36px; line-height: 1.28; font-weight: 700; margin: 0 0 18px; }
+  .hero-copy p { font-size: 15px; line-height: 1.7; opacity: 0.88; margin: 0; }
+
+  .hero-stats { display: flex; gap: 0; margin-top: 44px; border-top: 1px solid rgba(242,247,246,0.22); padding-top: 22px; position: relative; z-index: 1; }
+  .hero-stats .stat { flex: 1; padding-right: 20px; }
+  .hero-stats .stat .label { font-size: 10.5px; letter-spacing: 1.8px; text-transform: uppercase; opacity: 0.6; margin-bottom: 7px; }
+  .hero-stats .stat .value { font-size: 13.5px; opacity: 0.92; line-height: 1.5; }
+
+  /* ══════════════ RIGHT: form panel ══════════════ */
+  .form-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; background: var(--surface); }
+  .form-card { width: 100%; max-width: 380px; }
+  .form-card .form-logo-mobile { display: none; }
+  .form-card h2 { font-size: 25px; margin: 0 0 6px; font-weight: 700; color: var(--heading); }
+  .form-card .sub { font-size: 14px; color: var(--muted); margin: 0 0 32px; }
+
+  .field { margin-bottom: 20px; }
+
+  button.submit { width: 100%; margin-top: 6px; }
+
+  .status { margin-top: 18px; display: none; }
+  .status.show { display: flex; }
+
+  .footnote { margin-top: 32px; font-size: 12px; color: var(--muted); text-align: center; }
+  .footnote strong { color: var(--muted-strong); }
+
+  .mobile-stats { display: none; }
+
+  @media (max-width: 860px) {
+    body { flex-direction: column; }
+
+    .hero-panel {
+      flex: 0 0 auto; padding: 36px 30px 40px;
+      display: flex; flex-direction: column; gap: 26px; justify-content: flex-start;
+    }
+    .hero-copy h1 { font-size: 27px; margin-bottom: 0; }
+    .hero-copy p { display: none; } /* keeps the hero short so it doesn't crowd the section below */
+    .hero-stats { display: none; }
+
+    .form-panel {
+      flex: 1 1 auto;
+      padding: 20px 24px 32px;
+      justify-content: flex-start;
+      position: relative; z-index: 2;
+    }
+    .field-input {
+      min-height: 46px; font-size: 16px; /* 16px stops iOS auto-zoom-on-focus */
+    }
+    .btn.submit { min-height: 48px; }
+
+    /* Handover / Access / Records — now a standalone section under the form */
+    .mobile-stats {
+      display: flex; gap: 10px;
+      padding: 0 24px 32px;
+    }
+    .mobile-stats .stat {
+      flex: 1; background: var(--surface-alt);
+      border-radius: var(--radius-md); padding: 10px 8px; text-align: center;
+    }
+    .mobile-stats .stat .label {
+      font-size: 11px; font-weight: 700; color: var(--heading); margin-bottom: 3px;
+    }
+    .mobile-stats .stat .value {
+      font-size: 9.5px; line-height: 1.4; color: var(--muted-strong);
+    }
+
+    /* ── Dark mode only, below ──
+       One gradient on the page itself — hero and sign-in are no longer
+       two separately-colored blocks, just one continuous dark background
+       that the content sits on top of. Dark html background also means
+       iOS's overscroll bounce shows dark, not white, at the top/bottom.
+       In light mode none of this applies — the page just uses the normal
+       light surface/heading/muted variables, same as desktop, so the
+       toggle actually changes how the page looks. */
+    html[data-theme="dark"] { background: var(--teal-950); }
+    html[data-theme="dark"] body {
+      background: linear-gradient(180deg, var(--teal-950) 0%, var(--teal-700) 32%, var(--teal-950) 68%, var(--teal-950) 100%);
+    }
+    html[data-theme="dark"] .hero-panel { background: transparent; }
+    html[data-theme="dark"] .form-panel { background: transparent; }
+    html[data-theme="dark"] .form-card h2 { color: #f2f7f6; margin-top: 8px; }
+    html[data-theme="dark"] .form-card .sub { color: rgba(242,247,246,0.7); }
+    html[data-theme="dark"] .field-label { color: rgba(242,247,246,0.75); }
+    html[data-theme="dark"] .field-input {
+      background: rgba(242,247,246,0.08);
+      border-color: rgba(242,247,246,0.2);
+      color: #f2f7f6;
+    }
+    html[data-theme="dark"] .field-input::placeholder { color: rgba(242,247,246,0.4); }
+    html[data-theme="dark"] .field-input:focus {
+      border-color: var(--teal-300);
+      box-shadow: 0 0 0 3px rgba(109,207,194,0.18);
+    }
+    /* Override Safari/Chrome's yellow autofill highlight so a filled-in
+       email field still matches the dark input style instead of clashing */
+    html[data-theme="dark"] .field-input:-webkit-autofill,
+    html[data-theme="dark"] .field-input:-webkit-autofill:hover,
+    html[data-theme="dark"] .field-input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #f2f7f6;
+      -webkit-box-shadow: 0 0 0 1000px rgba(20,116,107,0.35) inset;
+      transition: background-color 9999s ease-in-out 0s;
+    }
+    html[data-theme="dark"] .form-panel .btn-primary { background: #f2f7f6; color: var(--teal-950); }
+    html[data-theme="dark"] .form-panel .btn-primary:hover:not(:disabled) { background: #eef7f5; }
+    html[data-theme="dark"] .footnote { color: rgba(242,247,246,0.55); }
+    html[data-theme="dark"] .footnote strong { color: rgba(242,247,246,0.85); }
+    html[data-theme="dark"] .mobile-stats .stat { background: rgba(242,247,246,0.07); }
+    html[data-theme="dark"] .mobile-stats .stat .label { color: #f2f7f6; }
+    html[data-theme="dark"] .mobile-stats .stat .value { color: rgba(242,247,246,0.65); }
+  }
+</style>
+</head>
+<body>
+
+  <button class="theme-toggle-btn" aria-label="Toggle dark mode"></button>
+
+  <div class="hero-panel">
+    <div class="hero-brand">
+      <img src="assets/logo.png" alt="Ri'aya logo">
+      <div class="brand-text">
+        <div class="ar">رعاية</div>
+        <div class="en">Ri'aya · Hospital System</div>
+      </div>
+    </div>
+
+    <div class="hero-copy">
+      <span class="eyebrow">Jordan Hospital Management System</span>
+      <h1>Providing modern healthcare management for Jordanian hospitals.</h1>
+      <p>One connected system for doctors, laboratory staff, and administrators — built so every handover, every result, and every patient update reaches the right person the moment it happens.</p>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat"><div class="label">Handover</div><div class="value">Locked when a shift ends</div></div>
+      <div class="stat"><div class="label">Access</div><div class="value">Scoped to your department</div></div>
+      <div class="stat"><div class="label">Records</div><div class="value">Every action logged</div></div>
+    </div>
+  </div>
+
+  <div class="form-panel">
+    <div class="form-card">
+      <h2>Sign in</h2>
+      <p class="sub">Use the credentials issued by your hospital administrator.</p>
+
+      <form id="login-form">
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input type="email" id="email" name="email" class="field-input" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="password">Password</label>
+          <input type="password" id="password" name="password" class="field-input" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary submit" id="submit-btn">Sign in</button>
+      </form>
+
+      <div class="alert status" id="status"></div>
+
+      <p class="footnote">Ri'aya Hospital Management System — <strong>internal use only</strong></p>
+    </div>
+  </div>
+
+  <div class="mobile-stats">
+    <div class="stat"><div class="label">Handover</div><div class="value">Locked at shift end</div></div>
+    <div class="stat"><div class="label">Access</div><div class="value">Dept scoped</div></div>
+    <div class="stat"><div class="label">Records</div><div class="value">Every action logged</div></div>
+  </div>
+
+<script>
+  // ══════════════════════════════════════════════════════════════
+  // SUPABASE CONNECTION SETUP — unchanged from before
+  // ══════════════════════════════════════════════════════════════
+  const SUPABASE_URL = "https://etvrquzjlgzmysbxlrev.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dnJxdXpqbGd6bXlzYnhscmV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2ODEyOTgsImV4cCI6MjA5OTI1NzI5OH0.zIgWMsOzp-agiVOe-cnOx4qgA-FUsU-fGbgVCvW_Yjg";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ══════════════════════════════════════════════════════════════
+  // ROLE → DASHBOARD MAPPING — unchanged from before
+  // ══════════════════════════════════════════════════════════════
+  const ROLE_REDIRECTS = {
+    admin: "admin.html",
+    head_doctor: "head-doctor-dashboard.html",
+    doctor: "doctor-dashboard.html",
+    duty_doctor: "duty-doctor-dashboard.html",
+    emergency_duty_doctor: "duty-doctor-dashboard.html",
+    nurse: "nurse-dashboard.html",
+    lab: "lab-dashboard.html",
+    blood_bank: "blood-bank-dashboard.html",
+    imaging: "imaging-dashboard.html",
+  };
+  const DEFAULT_REDIRECT = "dashboard.html";
+
+  initThemeToggle();
+
+  const form = document.getElementById("login-form");
+  const statusEl = document.getElementById("status");
+  const submitBtn = document.getElementById("submit-btn");
+
+  function showStatus(message, type) {
+    statusEl.innerHTML = `<span class="alert-icon">${type === "error" ? "⚠" : "✓"}</span><span>${message}</span>`;
+    statusEl.className = "alert status show " + (type === "error" ? "alert-error" : "alert-success");
+  }
+
+  function clearStatus() {
+    statusEl.className = "alert status";
+  }
+
+  // Arrived here after idle-logout.js auto-signed someone out — say so,
+  // rather than silently dropping them on a blank login form with no
+  // explanation of why they were logged out.
+  if (new URLSearchParams(window.location.search).get("signedOut") === "idle") {
+    showStatus("You were signed out after a period of inactivity, to help keep patient data secure on shared devices.", "success");
+  }
+
+  // Retries a network call a few times with increasing delay before giving
+  // up — a single dropped request on bad wifi/4G shouldn't be enough to
+  // stop someone signing in.
+  async function withRetry(fn, { retries = 3, baseDelayMs = 800 } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try { return await fn(); }
+      catch (err) {
+        lastErr = err;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
+      }
+    }
+    throw lastErr;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearStatus();
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+
+    let authData, authError;
+    for (let attempt = 0; ; attempt++) {
+      const result = await supabaseClient.auth.signInWithPassword({ email, password });
+      authData = result.data; authError = result.error;
+      // Only retry genuine network/connection failures — a wrong password
+      // should fail immediately, not retry pointlessly for several seconds.
+      const isRetryable = authError && window.supabase.isAuthRetryableFetchError(authError);
+      if (!isRetryable || attempt >= 3) break;
+      submitBtn.textContent = "Connection trouble, retrying…";
+      await new Promise((r) => setTimeout(r, 800 * Math.pow(2, attempt)));
+    }
+
+    if (authError) {
+      const message = window.supabase.isAuthRetryableFetchError(authError)
+        ? "Couldn't reach the server — check your connection and try again."
+        : (authError.message || "Sign in failed. Check your email and password.");
+      showStatus(message, "error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign in";
+      return;
+    }
+
+    const userId = authData.user.id;
+
+    let profile, profileError;
+    try {
+      const result = await withRetry(() => supabaseClient
+        .from("profiles")
+        .select("role, full_name")
+        .eq("user_id", userId)
+        .single());
+      profile = result.data; profileError = result.error;
+    } catch (err) {
+      profileError = err;
+    }
+
+    if (profileError || !profile) {
+      const isNetworkIssue = profileError && !profileError.code; // PostgREST errors (e.g. "no rows found") have a .code; thrown network/fetch errors don't
+      const message = isNetworkIssue
+        ? "Signed in, but couldn't load your profile — check your connection and try signing in again."
+        : "Signed in, but no profile was found for this account. Contact your administrator.";
+      showStatus(message, "error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign in";
+      return;
+    }
+
+    showStatus("Welcome, " + profile.full_name + ". Redirecting…", "success");
+
+    const destination = ROLE_REDIRECTS[profile.role] || DEFAULT_REDIRECT;
+    setTimeout(() => {
+      window.location.href = destination;
+    }, 600);
+  });
+</script>
+
+</body>
+</html>
